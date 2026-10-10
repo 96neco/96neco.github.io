@@ -6,229 +6,316 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Desmos表ビューア</title>
 <style>
+  * { box-sizing: border-box; }
   body {
     font-family: sans-serif;
-    margin: 24px;
+    margin: 16px;
     background: #f5f6f8;
     color: #222;
   }
-  h1 { font-size: 24px; }
-  h2 { font-size: 18px; margin-bottom: 8px; }
+  h1 { font-size: 23px; margin: 0 0 12px; }
+  h2 { font-size: 17px; margin: 0 0 10px; }
+  p { margin: 8px 0; }
   textarea {
     width: 100%;
-    height: 180px;
-    box-sizing: border-box;
-    padding: 12px;
+    height: 110px;
+    padding: 10px;
     font-family: monospace;
     border: 1px solid #bbb;
-    border-radius: 8px;
-    background: white;
+    border-radius: 7px;
+    resize: vertical;
   }
   button, input, select {
+    font: inherit;
     padding: 8px 10px;
-    margin: 4px 3px 4px 0;
-    box-sizing: border-box;
+    border: 1px solid #bbb;
+    border-radius: 6px;
+    background: white;
+    max-width: 100%;
   }
   button { cursor: pointer; }
-  button:disabled { cursor: not-allowed; opacity: .45; }
-  .panel {
-    background: white;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    padding: 12px;
-    margin: 12px 0;
-  }
-  .controls {
+  button:hover { background: #eef3fa; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  input { min-width: 0; width: 140px; }
+  .toolbar, .fields {
     display: flex;
     flex-wrap: wrap;
+    gap: 6px;
     align-items: center;
-    gap: 5px;
   }
-  .controls label { margin-right: 4px; }
+  .toolbar { margin: 8px 0; }
+  .panel {
+    background: white;
+    border: 1px solid #d5d9df;
+    border-radius: 9px;
+    padding: 12px;
+    margin: 10px 0;
+  }
+  .muted { color: #606873; font-size: 13px; }
   #status {
-    margin: 12px 0;
+    font-size: 13px;
+    margin: 8px 0;
     overflow-wrap: anywhere;
   }
+
+  /* タブ */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    padding: 2px 1px 0;
+    border-bottom: 1px solid #ccd2db;
+  }
+  .tab {
+    flex: 0 0 auto;
+    border: 1px solid transparent;
+    border-bottom: none;
+    border-radius: 7px 7px 0 0;
+    background: #e8ebf0;
+    padding: 9px 13px;
+  }
+  .tab.active {
+    background: white;
+    border-color: #ccd2db;
+    font-weight: bold;
+    position: relative;
+    margin-bottom: -1px;
+  }
+  .tab-content {
+    background: white;
+    border: 1px solid #ccd2db;
+    border-top: none;
+    border-radius: 0 0 9px 9px;
+    padding: 13px;
+    min-height: 125px;
+  }
+  .tab-panel[hidden] { display: none; }
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 13px;
+  }
+  .field input, .field select { width: 150px; }
+  .primary {
+    background: #2869c7;
+    color: white;
+    border-color: #2869c7;
+  }
+  .primary:hover { background: #1e55a5; }
+  .danger { color: #a32121; }
+
+  /* 表 */
   .table-wrap {
-    max-height: 65vh;
+    height: 52vh;
+    min-height: 220px;
     overflow: auto;
     background: white;
-    border: 1px solid #ccc;
+    border: 1px solid #ccd2db;
+    border-radius: 7px;
   }
   table {
     width: 100%;
-    border-collapse: collapse;
+    border-collapse: separate;
+    border-spacing: 0;
   }
   th, td {
     padding: 7px 12px;
-    border-bottom: 1px solid #ddd;
+    border-bottom: 1px solid #e1e4e8;
     text-align: right;
     white-space: nowrap;
   }
   th {
     position: sticky;
     top: 0;
+    z-index: 2;
     background: #e8edf4;
-    z-index: 1;
   }
   th:first-child, td:first-child { text-align: center; }
-  tbody tr:hover { background: #f0f5ff; }
-  tr.highlight { background: #fff0a8 !important; }
   td.editable { cursor: text; }
-  td.editable:hover { outline: 2px solid #7aa7e8; outline-offset: -2px; }
+  td.editable:hover {
+    outline: 2px solid #7aa7e8;
+    outline-offset: -2px;
+  }
+  tr.highlight { background: #fff0a8 !important; }
   td input.cell-editor {
     width: 100%;
-    min-width: 90px;
-    padding: 5px;
+    min-width: 80px;
+    padding: 4px;
     margin: 0;
     text-align: right;
   }
-  .hint {
-    font-size: 13px;
-    color: #555;
-    line-height: 1.6;
+  tbody tr:hover { background: #f0f5ff; }
+
+  @media (max-width: 600px) {
+    body { margin: 9px; }
+    .field { flex: 1 1 130px; }
+    .field input, .field select { width: 100%; }
+    .table-wrap { height: 48vh; }
+    th, td { padding: 7px 9px; }
   }
-  .danger { color: #a32121; }
 </style>
 </head>
 <body>
 
 <h1>Desmos表ビューア</h1>
-<p>拡張機能で取得した table の内容を貼り付けてください。</p>
 
-<textarea id="source"
- placeholder="ここに table { ... } を貼り付け"></textarea>
-<div class="controls">
-  <button id="convert">表に変換</button>
-  <button id="clear">すべてクリア</button>
-  <button id="copy" disabled>編集後の表をコピー</button>
+<details class="panel">
+  <summary>データを読み込む</summary>
+  <p class="muted">拡張機能で取得した table の内容を貼り付けてください。</p>
+  <textarea id="source" placeholder="ここに table { ... } を貼り付け"></textarea>
+  <div class="toolbar">
+    <button id="convert" class="primary">表に変換</button>
+    <button id="clear">データをクリア</button>
+  </div>
+</details>
+
+<div class="toolbar">
+  <button id="copy" class="primary" disabled>編集後の表をコピー</button>
+  <button id="undoBtn" disabled>↶ 元に戻す</button>
+  <button id="redoBtn" disabled>↷ やり直す</button>
 </div>
 
 <p id="status" aria-live="polite">データを待っています。</p>
 
-<div class="panel">
-  <h2>検索・移動</h2>
-  <div class="controls">
-    <label>行へ移動：
-      <input id="jump" type="number" min="1" placeholder="行番号" style="width:110px">
-    </label>
-    <button id="go">移動</button>
+<section class="panel">
+  <h2>編集機能</h2>
+
+  <div class="tabs" role="tablist" aria-label="編集機能">
+    <button class="tab active" role="tab" aria-selected="true" data-tab="replace">① 置換</button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="insert">② 挿入</button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="append">③ 追加</button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="delete">④ 削除</button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="edit">⑤ 編集</button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="swap">⑥ 入替</button>
   </div>
-  <div class="controls">
-    <label>部分一致検索：
+
+  <div class="tab-content">
+    <div class="tab-panel" id="panel-replace" role="tabpanel">
+      <h2>値を置換</h2>
+      <div class="fields">
+        <label class="field">対象の列
+          <select id="replaceColumn">
+            <option value="x">x₁</option>
+            <option value="y">y₁</option>
+            <option value="both">両方</option>
+          </select>
+        </label>
+        <label class="field">検索値
+          <input id="replaceFrom" placeholder="変更前">
+        </label>
+        <label class="field">変更後
+          <input id="replaceTo" placeholder="変更後">
+        </label>
+        <label class="field">一致方法
+          <select id="replaceMode">
+            <option value="exact">完全一致</option>
+            <option value="partial">部分一致</option>
+          </select>
+        </label>
+      </div>
+      <div class="toolbar">
+        <button id="replaceBtn" class="primary">置換する</button>
+      </div>
+      <p class="muted">一致したすべてのセルを変更します。</p>
+    </div>
+
+    <div class="tab-panel" id="panel-insert" role="tabpanel" hidden>
+      <h2>指定した位置に行を挿入</h2>
+      <div class="fields">
+        <label class="field">挿入する行番号
+          <input id="insertAt" type="number" min="1" placeholder="行番号">
+        </label>
+        <label class="field">x₁
+          <input id="insertX" placeholder="xの値">
+        </label>
+        <label class="field">y₁
+          <input id="insertY" placeholder="yの値">
+        </label>
+      </div>
+      <div class="toolbar">
+        <button id="insertBtn" class="primary">指定行の前に挿入</button>
+      </div>
+      <p class="muted">例：3を指定すると、現在の3行目の前に新しい行を入れます。</p>
+    </div>
+
+    <div class="tab-panel" id="panel-append" role="tabpanel" hidden>
+      <h2>末尾に行を追加</h2>
+      <div class="fields">
+        <label class="field">x₁
+          <input id="appendX" placeholder="xの値">
+        </label>
+        <label class="field">y₁
+          <input id="appendY" placeholder="yの値">
+        </label>
+      </div>
+      <div class="toolbar">
+        <button id="appendBtn" class="primary">末尾に追加</button>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="panel-delete" role="tabpanel" hidden>
+      <h2>指定した行を削除</h2>
+      <div class="fields">
+        <label class="field">削除する行番号
+          <input id="deleteAt" type="number" min="1" placeholder="行番号">
+        </label>
+      </div>
+      <div class="toolbar">
+        <button id="deleteBtn" class="danger">この行を削除</button>
+      </div>
+      <p class="muted">x₁とy₁の値をセットで削除します。</p>
+    </div>
+
+    <div class="tab-panel" id="panel-edit" role="tabpanel" hidden>
+      <h2>セルを直接編集</h2>
+      <p>表のx₁またはy₁の値をクリックすると編集できます。</p>
+      <p class="muted">Enterで確定、Escでキャンセル。セルから移動しても入力内容を確定します。</p>
+    </div>
+
+    <div class="tab-panel" id="panel-swap" role="tabpanel" hidden>
+      <h2>2つの行を入れ替え</h2>
+      <div class="fields">
+        <label class="field">行A
+          <input id="swapA" type="number" min="1" placeholder="行番号">
+        </label>
+        <label class="field">行B
+          <input id="swapB" type="number" min="1" placeholder="行番号">
+        </label>
+      </div>
+      <div class="toolbar">
+        <button id="swapBtn" class="primary">行を入れ替える</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="panel">
+  <h2>検索・行へ移動</h2>
+  <div class="fields">
+    <label class="field">部分一致検索
       <input id="search" placeholder="検索する値">
     </label>
+    <label class="field">行番号へ移動
+      <input id="jump" type="number" min="1" placeholder="行番号">
+    </label>
+  </div>
+  <div class="toolbar">
+    <button id="go">指定行へ移動</button>
     <button id="resetSearch">検索解除</button>
   </div>
-</div>
+</section>
 
-<div class="panel">
-  <h2>① 置換</h2>
-  <div class="controls">
-    <label>列：
-      <select id="replaceColumn">
-        <option value="x">x₁</option>
-        <option value="y">y₁</option>
-        <option value="both">両方</option>
-      </select>
-    </label>
-    <label>検索値：
-      <input id="replaceFrom" placeholder="変更前の値">
-    </label>
-    <label>変更後：
-      <input id="replaceTo" placeholder="変更後の値">
-    </label>
-  </div>
-  <div class="controls">
-    <label>一致方法：
-      <select id="replaceMode">
-        <option value="exact">完全一致</option>
-        <option value="partial">部分一致</option>
-      </select>
-    </label>
-    <button id="replaceBtn">置換する</button>
-  </div>
-  <p class="hint">一致したすべてのセルを置換します。部分一致では、セル内の該当部分だけを変更します。</p>
-</div>
-
-<div class="panel">
-  <h2>② 行を挿入</h2>
-  <div class="controls">
-    <label>挿入位置：
-      <input id="insertAt" type="number" min="1" placeholder="行番号" style="width:100px">
-      行目の前
-    </label>
-    <label>x₁：
-      <input id="insertX" placeholder="xの値">
-    </label>
-    <label>y₁：
-      <input id="insertY" placeholder="yの値">
-    </label>
-    <button id="insertBtn">挿入</button>
-  </div>
-  <p class="hint">1行目の前から、最終行の前まで指定できます。</p>
-</div>
-
-<div class="panel">
-  <h2>③ 末尾に追加</h2>
-  <div class="controls">
-    <label>x₁：
-      <input id="appendX" placeholder="xの値">
-    </label>
-    <label>y₁：
-      <input id="appendY" placeholder="yの値">
-    </label>
-    <button id="appendBtn">末尾に追加</button>
-  </div>
-</div>
-
-<div class="panel">
-  <h2>④ 行を削除</h2>
-  <div class="controls">
-    <label>削除する行：
-      <input id="deleteAt" type="number" min="1" placeholder="行番号" style="width:110px">
-    </label>
-    <button id="deleteBtn" class="danger">削除</button>
-  </div>
-</div>
-
-<div class="panel">
-  <h2>⑥ 行の入れ替え</h2>
-  <div class="controls">
-    <label>行A：
-      <input id="swapA" type="number" min="1" placeholder="行番号" style="width:90px">
-    </label>
-    <label>行B：
-      <input id="swapB" type="number" min="1" placeholder="行番号" style="width:90px">
-    </label>
-    <button id="swapBtn">入れ替え</button>
-  </div>
-</div>
-
-<div class="panel">
-  <h2>⑦ 操作を戻す・やり直す</h2>
-  <div class="controls">
-    <button id="undoBtn" disabled>↶ 元に戻す</button>
-    <button id="redoBtn" disabled>↷ やり直す</button>
-  </div>
-  <p class="hint">編集操作を最大100段階まで記録します。表を新しく読み込むと履歴はリセットされます。</p>
-</div>
-
-<h2>表（⑤ 数値をクリックして直接編集）</h2>
-<p class="hint">
-  セルをクリックして値を変更できます。Enterで確定、Escでキャンセルします。
-  行番号は上から1、2、3…です。
-</p>
-
-<div class="table-wrap">
-<table>
-  <thead>
-    <tr><th>行</th><th>x₁</th><th>y₁</th></tr>
-  </thead>
-  <tbody id="result">
-    <tr><td colspan="3">データがありません</td></tr>
-  </tbody>
-</table>
+<h2>表 <span class="muted">（セルをクリックして編集）</span></h2>
+<div class="table-wrap" id="tableWrap">
+  <table>
+    <thead>
+      <tr><th>行</th><th>x₁</th><th>y₁</th></tr>
+    </thead>
+    <tbody id="result">
+      <tr><td colspan="3">データがありません</td></tr>
+    </tbody>
+  </table>
 </div>
 
 <script>
@@ -244,15 +331,9 @@ function setStatus(message) {
 }
 
 function getArray(text, name) {
-  const re = new RegExp(
-    name + "\\s*=\\s*\\[([\\s\\S]*?)\\]"
-  );
+  const re = new RegExp(name + "\\s*=\\s*\\[([\\s\\S]*?)\\]");
   const match = text.match(re);
-
-  if (!match) {
-    throw new Error(name + " が見つかりません");
-  }
-
+  if (!match) throw new Error(name + " が見つかりません");
   if (!match[1].trim()) return [];
 
   return match[1].split(",").map(value => {
@@ -270,8 +351,8 @@ function validNumber(value) {
 }
 
 function updateHistoryButtons() {
-  $("undoBtn").disabled = undoStack.length === 0;
-  $("redoBtn").disabled = redoStack.length === 0;
+  $("undoBtn").disabled = !undoStack.length;
+  $("redoBtn").disabled = !redoStack.length;
 }
 
 function saveHistory() {
@@ -281,10 +362,11 @@ function saveHistory() {
   updateHistoryButtons();
 }
 
-function mutate(action) {
+function mutate(action, message) {
   saveHistory();
   action();
   render();
+  if (message) setStatus(message);
 }
 
 function undo() {
@@ -317,25 +399,23 @@ function render() {
   const body = $("result");
   body.replaceChildren();
 
-  let foundCount = 0;
+  let count = 0;
+  const fragment = document.createDocumentFragment();
 
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
 
-    if (
-      query &&
-      !r.x.toLowerCase().includes(query) &&
-      !r.y.toLowerCase().includes(query)
-    ) continue;
+    if (query &&
+        !r.x.toLowerCase().includes(query) &&
+        !r.y.toLowerCase().includes(query)) continue;
 
-    foundCount++;
-
+    count++;
     const tr = document.createElement("tr");
     tr.dataset.index = i;
 
-    const numberCell = document.createElement("td");
-    numberCell.textContent = i + 1;
-    tr.appendChild(numberCell);
+    const num = document.createElement("td");
+    num.textContent = i + 1;
+    tr.appendChild(num);
 
     for (const key of ["x", "y"]) {
       const td = document.createElement("td");
@@ -345,11 +425,12 @@ function render() {
       td.title = "クリックして編集";
       tr.appendChild(td);
     }
-
-    body.appendChild(tr);
+    fragment.appendChild(tr);
   }
 
-  if (!foundCount) {
+  if (count) {
+    body.appendChild(fragment);
+  } else {
     const tr = document.createElement("tr");
     const td = document.createElement("td");
     td.colSpan = 3;
@@ -358,26 +439,34 @@ function render() {
     body.appendChild(tr);
   }
 
-  setStatus(
-    rows.length + "行中 " + foundCount + "行を表示" +
-    (undoStack.length ? " ／ 戻せる操作：" + undoStack.length : "")
-  );
-
+  setStatus(rows.length + "行中 " + count + "行を表示");
   $("copy").disabled = rows.length === 0;
 }
 
-// 表の読み込み
+// タブ切り替え
+document.querySelectorAll(".tab").forEach(tab => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach(t => {
+      const active = t === tab;
+      t.classList.toggle("active", active);
+      t.setAttribute("aria-selected", String(active));
+    });
+
+    document.querySelectorAll(".tab-panel").forEach(panel => {
+      panel.hidden = panel.id !== "panel-" + tab.dataset.tab;
+    });
+  });
+});
+
+// データ読み込み
 $("convert").onclick = () => {
   try {
-    const text = $("source").value;
-    const xs = getArray(text, "x_1");
-    const ys = getArray(text, "y_1");
+    const xs = getArray($("source").value, "x_1");
+    const ys = getArray($("source").value, "y_1");
 
     if (xs.length !== ys.length) {
-      throw new Error(
-        "列の長さが違います。x₁=" + xs.length +
-        "個、y₁=" + ys.length + "個"
-      );
+      throw new Error("列の長さが違います。x₁=" + xs.length +
+        "個、y₁=" + ys.length + "個");
     }
 
     rows = xs.map((x, i) => ({ x, y: ys[i] }));
@@ -404,7 +493,6 @@ $("result").addEventListener("click", event => {
   input.className = "cell-editor";
   input.value = original;
   input.setAttribute("aria-label", "セルの値を編集");
-
   td.textContent = "";
   td.appendChild(input);
   input.focus();
@@ -415,23 +503,18 @@ $("result").addEventListener("click", event => {
   function finish(commit) {
     if (finished) return;
     finished = true;
-
     const value = input.value.trim();
 
     if (commit && value !== original) {
       if (!validNumber(value)) {
-        td.textContent = original;
+        render();
         setStatus("数値を入力してください。変更は取り消されました");
         return;
       }
-
-      mutate(() => {
-        rows[index][key] = value;
-      });
-      setStatus((index + 1) + "行目の" + (key === "x" ? "x₁" : "y₁") +
-        "を変更しました");
+      mutate(() => { rows[index][key] = value; },
+        (index + 1) + "行目の" + (key === "x" ? "x₁" : "y₁") + "を変更しました");
     } else {
-      td.textContent = original;
+      render();
     }
   }
 
@@ -453,53 +536,33 @@ $("replaceBtn").onclick = () => {
   if (!rows.length) return setStatus("先に表を読み込んでください");
 
   const from = $("replaceFrom").value;
-  const to = $("replaceTo").value;
+  const to = $("replaceTo").value.trim();
   const column = $("replaceColumn").value;
   const mode = $("replaceMode").value;
 
-  if (from === "") return setStatus("検索値を入力してください");
+  if (!from) return setStatus("検索値を入力してください");
   if (!validNumber(to)) return setStatus("変更後の値には数値を入力してください");
 
+  const keys = column === "both" ? ["x", "y"] : [column];
   let count = 0;
 
-  for (const r of rows) {
-    const keys = column === "both" ? ["x", "y"] : [column];
-
-    for (const key of keys) {
-      const value = r[key];
-      const matches = mode === "exact"
-        ? value === from
-        : value.includes(from);
-
-      if (matches) count++;
-    }
-  }
+  rows.forEach(r => keys.forEach(key => {
+    if (mode === "exact" ? r[key] === from : r[key].includes(from)) count++;
+  }));
 
   if (!count) return setStatus("一致する値がありませんでした");
-
   if (!confirm(count + "個のセルを置換します。よろしいですか？")) return;
 
   mutate(() => {
-    for (const r of rows) {
-      const keys = column === "both" ? ["x", "y"] : [column];
-
-      for (const key of keys) {
-        const value = r[key];
-        const matches = mode === "exact"
-          ? value === from
-          : value.includes(from);
-
-        if (matches) {
-          r[key] = mode === "exact" ? to : value.split(from).join(to);
-        }
+    rows.forEach(r => keys.forEach(key => {
+      if (mode === "exact" ? r[key] === from : r[key].includes(from)) {
+        r[key] = mode === "exact" ? to : r[key].split(from).join(to);
       }
-    }
-  });
-
-  setStatus(count + "個のセルを置換しました");
+    }));
+  }, count + "個のセルを置換しました");
 };
 
-// ② 行を挿入
+// ② 挿入
 $("insertBtn").onclick = () => {
   if (!rows.length) return setStatus("先に表を読み込んでください");
 
@@ -508,14 +571,14 @@ $("insertBtn").onclick = () => {
   const y = $("insertY").value.trim();
 
   if (!Number.isInteger(n) || n < 1 || n > rows.length) {
-    return setStatus("挿入位置は1〜" + rows.length + "行目の前で指定してください");
+    return setStatus("挿入位置は1〜" + rows.length + "行目で指定してください");
   }
   if (!validNumber(x) || !validNumber(y)) {
     return setStatus("x₁とy₁に数値を入力してください");
   }
 
-  mutate(() => rows.splice(n - 1, 0, { x, y }));
-  setStatus(n + "行目の前に行を挿入しました");
+  mutate(() => rows.splice(n - 1, 0, { x, y }),
+    n + "行目の前に行を挿入しました");
 };
 
 // ③ 末尾に追加
@@ -527,45 +590,36 @@ $("appendBtn").onclick = () => {
     return setStatus("x₁とy₁に数値を入力してください");
   }
 
-  mutate(() => rows.push({ x, y }));
+  mutate(() => rows.push({ x, y }), "末尾に行を追加しました");
   $("appendX").value = "";
   $("appendY").value = "";
-  setStatus("末尾に行を追加しました（" + rows.length + "行）");
 };
 
-// ④ 行を削除
+// ④ 削除
 $("deleteBtn").onclick = () => {
   const n = Number($("deleteAt").value);
 
   if (!Number.isInteger(n) || n < 1 || n > rows.length) {
     return setStatus("削除する行は1〜" + rows.length + "で指定してください");
   }
-
   if (!confirm(n + "行目を削除します。よろしいですか？")) return;
 
-  mutate(() => rows.splice(n - 1, 1));
-  setStatus(n + "行目を削除しました");
+  mutate(() => rows.splice(n - 1, 1), n + "行目を削除しました");
 };
 
-// ⑥ 行の入れ替え
+// ⑥ 入れ替え
 $("swapBtn").onclick = () => {
   const a = Number($("swapA").value);
   const b = Number($("swapB").value);
 
-  if (
-    !Number.isInteger(a) || !Number.isInteger(b) ||
-    a < 1 || b < 1 || a > rows.length || b > rows.length
-  ) {
+  if (![a, b].every(n => Number.isInteger(n) && n >= 1 && n <= rows.length)) {
     return setStatus("行番号は1〜" + rows.length + "で指定してください");
   }
-
   if (a === b) return setStatus("異なる行番号を指定してください");
 
   mutate(() => {
     [rows[a - 1], rows[b - 1]] = [rows[b - 1], rows[a - 1]];
-  });
-
-  setStatus(a + "行目と" + b + "行目を入れ替えました");
+  }, a + "行目と" + b + "行目を入れ替えました");
 };
 
 // ⑦ 元に戻す・やり直す
@@ -574,7 +628,6 @@ $("redoBtn").onclick = redo;
 
 // 検索
 $("search").addEventListener("input", render);
-
 $("resetSearch").onclick = () => {
   $("search").value = "";
   render();
@@ -583,7 +636,6 @@ $("resetSearch").onclick = () => {
 // 行へ移動
 $("go").onclick = () => {
   const n = Number($("jump").value);
-
   if (!Number.isInteger(n) || n < 1 || n > rows.length) {
     return setStatus("1〜" + rows.length + "の行番号を入力してください");
   }
@@ -591,17 +643,14 @@ $("go").onclick = () => {
   $("search").value = "";
   render();
 
-  const tr = $("result").querySelector(
-    'tr[data-index="' + (n - 1) + '"]'
-  );
-
+  const tr = $("result").querySelector('tr[data-index="' + (n - 1) + '"]');
   if (tr) {
     tr.scrollIntoView({ block: "center" });
     tr.classList.add("highlight");
   }
 };
 
-// ⑧ 編集後の表をコピー
+// ⑧ コピー
 $("copy").onclick = async () => {
   const text = rows.map(r => r.x + "\t" + r.y).join("\n");
 
@@ -609,7 +658,6 @@ $("copy").onclick = async () => {
     await navigator.clipboard.writeText(text);
     setStatus("編集後の表をコピーしました（タブ区切り）");
   } catch {
-    // クリップボードAPIが使えない場合の代替手段
     const area = document.createElement("textarea");
     area.value = text;
     area.style.position = "fixed";
@@ -618,27 +666,18 @@ $("copy").onclick = async () => {
     area.select();
 
     let copied = false;
-    try {
-      copied = document.execCommand("copy");
-    } catch {}
-
+    try { copied = document.execCommand("copy"); } catch {}
     area.remove();
 
-    if (copied) {
-      setStatus("編集後の表をコピーしました（タブ区切り）");
-    } else {
-      setStatus("自動コピーできませんでした。ブラウザの権限を確認してください");
-    }
+    setStatus(copied
+      ? "編集後の表をコピーしました（タブ区切り）"
+      : "自動コピーできませんでした。ブラウザの権限を確認してください");
   }
 };
 
 // すべてクリア
 $("clear").onclick = () => {
-  if (
-    rows.length &&
-    !confirm("読み込んだ表と編集履歴をすべて消去します。よろしいですか？")
-  ) return;
-
+  if (rows.length && !confirm("表と編集履歴を消去しますか？")) return;
   rows = [];
   $("source").value = "";
   $("search").value = "";
@@ -648,6 +687,5 @@ $("clear").onclick = () => {
   setStatus("クリアしました");
 };
 </script>
-
 </body>
 </html>
