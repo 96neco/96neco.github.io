@@ -226,8 +226,12 @@ tr.drop-target { outline: 2px dashed #477fcb; }
 
 <details open>
   <summary>元データの読み込み</summary>
-  <p class="hint">Desmos の表データを貼り付けて「読み込み」を押してください。</p>
-  <textarea id="sourceInput" placeholder="Desmos の表データをここに貼り付け"></textarea>
+  <p class="hint">
+    <strong>DesModder for Desmos</strong><br>
+    <a href="https://chromewebstore.google.com/detail/desmodder-for-desmos/eclmfdfimjhkmjglgdldedokjaemjfjp" target="_blank" rel="noopener noreferrer">https://chromewebstore.google.com/detail/desmodder-for-desmos/eclmfdfimjhkmjglgdldedokjaemjfjp</a><br>
+    を使用して、テキスト化したテーブルデータを貼り付けて「読み込み」を押してください。
+  </p>
+  <textarea id="sourceInput" placeholder="Desmos の表データをここに貼り付け（table {...}の形式）"></textarea>
   <div class="toolbar">
     <button onclick="loadSource()">読み込み</button>
   </div>
@@ -243,7 +247,7 @@ tr.drop-target { outline: 2px dashed #477fcb; }
   <button onclick="moveMatch(-1)" title="前の一致箇所">↑</button>
   <button onclick="moveMatch(1)" title="次の一致箇所">↓</button>
   <span id="searchCount">0 / 0</span>
-  <button onclick="replaceValues()">値を置換</button>
+  <button onclick="replaceValues()">値をすべて置換</button>
 </div>
 
 <div class="table-wrap">
@@ -273,7 +277,7 @@ tr.drop-target { outline: 2px dashed #477fcb; }
   Tab：入力中のセルから次のセルへ移動します。<br>
   空白のセルを選択してBackspace：その行を削除し、ひとつ前の行のx列を入力モードにします。<br>
   Delete：選択行を確認画面なしで削除します。<br>
-  Ctrl + Z：元に戻す。Ctrl + Y：やり直す。入力欄やセル編集中でも有効です。<br>
+  Ctrl + Z：元に戻す。Ctrl + Y：やり直す。<br>
   行番号をドラッグすると行を並べ替えられます。
 </p>
 
@@ -288,23 +292,15 @@ let future = [];
 let dragIndex = null;
 let editing = false;
 
-// 現在編集中のセルを、保存せず安全に終了する関数
-let cancelActiveEdit = null;
-
 const $ = id => document.getElementById(id);
 
 function setStatus(message) {
   $("status").textContent = message;
 }
 
-/* 履歴 */
 function snapshot() {
   history.push(JSON.stringify(rows));
-
-  if (history.length > 100) {
-    history.shift();
-  }
-
+  if (history.length > 100) history.shift();
   future = [];
   updateHistoryButtons();
 }
@@ -314,52 +310,30 @@ function updateHistoryButtons() {
   $("redoBtn").disabled = future.length === 0;
 }
 
-// 未確定のセル編集があれば破棄してから履歴を操作する
-function cancelEditingForHistory() {
-  if (cancelActiveEdit) {
-    cancelActiveEdit();
-  }
-
-  editing = false;
-}
-
 function undo() {
-  cancelEditingForHistory();
-
-  if (!history.length) {
-    setStatus("元に戻せる操作がありません。");
-    return;
-  }
+  if (!history.length) return;
 
   future.push(JSON.stringify(rows));
   rows = JSON.parse(history.pop());
-
   selectedCell = null;
   selectedRow = null;
-
+  editing = false;
   render();
   setStatus("操作を元に戻しました。");
 }
 
 function redo() {
-  cancelEditingForHistory();
-
-  if (!future.length) {
-    setStatus("やり直せる操作がありません。");
-    return;
-  }
+  if (!future.length) return;
 
   history.push(JSON.stringify(rows));
   rows = JSON.parse(future.pop());
-
   selectedCell = null;
   selectedRow = null;
-
+  editing = false;
   render();
   setStatus("操作をやり直しました。");
 }
 
-/* Desmos データの読み込み */
 function parseArray(source, name) {
   const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const regex = new RegExp(
@@ -386,7 +360,6 @@ function loadSource() {
     return;
   }
 
-  cancelEditingForHistory();
   snapshot();
 
   const length = Math.max(xs.length, ys.length);
@@ -397,12 +370,10 @@ function loadSource() {
 
   selectedCell = null;
   selectedRow = null;
-
   render();
   setStatus(`${rows.length} 行を読み込みました。`);
 }
 
-/* 表の描画 */
 function render() {
   const tbody = $("tableBody");
   tbody.replaceChildren();
@@ -439,17 +410,14 @@ function render() {
 
     numberCell.addEventListener("dragend", () => {
       dragIndex = null;
-
       document.querySelectorAll("tr").forEach(r =>
         r.classList.remove("dragging", "drop-target")
       );
-
       render();
     });
 
     tr.addEventListener("dragover", event => {
       if (dragIndex === null || dragIndex === index) return;
-
       event.preventDefault();
       tr.classList.add("drop-target");
     });
@@ -470,7 +438,6 @@ function render() {
       const destination = from < index ? index - 1 : index;
 
       rows.splice(destination, 0, moved);
-
       selectedRow = destination;
       selectedCell = null;
       dragIndex = null;
@@ -502,7 +469,6 @@ function render() {
       td.addEventListener("click", () => {
         selectedRow = index;
         selectedCell = {row: index, col: key};
-
         render();
 
         const target = document.querySelector(
@@ -522,7 +488,6 @@ function render() {
   updateHistoryButtons();
 }
 
-/* セル編集 */
 function editCell(td, rowIndex, key) {
   if (td.querySelector("input")) return;
 
@@ -539,36 +504,17 @@ function editCell(td, rowIndex, key) {
   input.type = "text";
   input.className = "cell-editor";
   input.value = oldValue;
-
   td.appendChild(input);
   input.focus();
   input.select();
 
   let finished = false;
 
-  // 履歴操作用：未確定の編集を保存せず破棄する
-  const cancelThisEdit = () => {
-    if (finished) return;
-
-    finished = true;
-    editing = false;
-
-    if (cancelActiveEdit === cancelThisEdit) {
-      cancelActiveEdit = null;
-    }
-  };
-
-  cancelActiveEdit = cancelThisEdit;
-
   function finish(save, move = null) {
     if (finished) return;
 
     finished = true;
     editing = false;
-
-    if (cancelActiveEdit === cancelThisEdit) {
-      cancelActiveEdit = null;
-    }
 
     const newValue = input.value;
 
@@ -598,7 +544,6 @@ function editCell(td, rowIndex, key) {
       if (nextRow >= 0 && nextRow < rows.length) {
         selectedRow = nextRow;
         selectedCell = {row: nextRow, col: nextCol};
-
         render();
 
         const newCell = document.querySelector(
@@ -613,7 +558,6 @@ function editCell(td, rowIndex, key) {
   input.addEventListener("keydown", event => {
     // Ctrl+Z / Ctrl+Y は document のキャプチャ段階で処理する
 
-    // 空のセルで Backspace：その行を削除
     if (
       event.key === "Backspace" &&
       input.value === "" &&
@@ -626,10 +570,6 @@ function editCell(td, rowIndex, key) {
 
       finished = true;
       editing = false;
-
-      if (cancelActiveEdit === cancelThisEdit) {
-        cancelActiveEdit = null;
-      }
 
       const deletedIndex = rowIndex;
 
@@ -675,11 +615,6 @@ function editCell(td, rowIndex, key) {
 
       finished = true;
       editing = false;
-
-      if (cancelActiveEdit === cancelThisEdit) {
-        cancelActiveEdit = null;
-      }
-
       selectedRow = rowIndex;
       selectedCell = {row: rowIndex, col: key};
 
@@ -721,7 +656,6 @@ function editCell(td, rowIndex, key) {
   input.addEventListener("blur", () => finish(true));
 }
 
-/* 行の追加・削除 */
 function insertAfterSelected(initialValues = {x: "", y: ""}) {
   if (selectedRow === null) {
     setStatus("先に行番号またはセルを選択してください。");
@@ -773,8 +707,6 @@ function deleteSelectedRow() {
     return;
   }
 
-  cancelEditingForHistory();
-
   const index = selectedRow;
 
   snapshot();
@@ -809,9 +741,7 @@ function deleteSelectedRow() {
 function clearTable() {
   if (!confirm("表のデータをすべて消去しますか？")) return;
 
-  cancelEditingForHistory();
   snapshot();
-
   rows = [];
   selectedCell = null;
   selectedRow = null;
@@ -820,7 +750,6 @@ function clearTable() {
   setStatus("表をクリアしました。");
 }
 
-/* コピー */
 function copyTable() {
   const text = rows.map(row => `${row.x}\t${row.y}`).join("\n");
 
@@ -849,7 +778,6 @@ function copyFallback(text) {
   area.remove();
 }
 
-/* 置換 */
 function replaceValues() {
   const query = $("searchInput").value;
 
@@ -883,9 +811,7 @@ function replaceValues() {
     return;
   }
 
-  cancelEditingForHistory();
   snapshot();
-
   rows = changed;
   render();
   setStatus(`${count} 個のセルを置換しました。`);
@@ -975,29 +901,25 @@ function moveMatch(direction) {
   scrollToMatch();
 }
 
+/* キーボード操作 */
+
 /*
- * Ctrl+Z / Ctrl+Y の最優先処理。
- * キャプチャ段階で受け取るため、入力欄やセル編集欄でも有効。
+ * キャプチャ段階で処理することで、入力欄・セル編集中でも
+ * Ctrl+Z / Ctrl+Y を表の履歴操作として優先する。
  */
 document.addEventListener("keydown", event => {
   if (!event.ctrlKey || event.altKey || event.metaKey) return;
 
-  const isZ = event.code === "KeyZ" ||
-              event.key?.toLowerCase() === "z" ||
-              event.keyCode === 90;
+  const key = event.key.toLowerCase();
 
-  const isY = event.code === "KeyY" ||
-              event.key?.toLowerCase() === "y" ||
-              event.keyCode === 89;
-
-  if (isZ && !event.shiftKey) {
+  if (key === "z" && !event.shiftKey) {
     event.preventDefault();
     event.stopImmediatePropagation();
     undo();
     return;
   }
 
-  if (isY && !event.shiftKey) {
+  if (key === "y" && !event.shiftKey) {
     event.preventDefault();
     event.stopImmediatePropagation();
     redo();
@@ -1006,11 +928,8 @@ document.addEventListener("keydown", event => {
 
 /* その他のキーボード操作 */
 document.addEventListener("keydown", event => {
-  if (event.ctrlKey && (
-    event.code === "KeyZ" ||
-    event.code === "KeyY" ||
-    ["z", "y"].includes(event.key?.toLowerCase())
-  )) {
+  // Ctrl+Z / Ctrl+Y は上のキャプチャ処理で処理済み
+  if (event.ctrlKey && ["z", "y"].includes(event.key.toLowerCase())) {
     return;
   }
 
@@ -1019,7 +938,7 @@ document.addEventListener("keydown", event => {
   const tag = document.activeElement?.tagName;
   if (["INPUT", "TEXTAREA", "SELECT"].includes(tag)) return;
 
-  // Backspace：空白セルを選択中なら、その行を削除
+  // Backspace：空白セルを選択中なら、その行を削除して前の行を編集
   if (event.key === "Backspace") {
     if (selectedCell === null || selectedRow === null) return;
 
