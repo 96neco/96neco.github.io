@@ -16,7 +16,6 @@ body {
 }
 
 h2 { margin: 0 0 12px; font-size: 22px; }
-
 button, input, select, textarea { font: inherit; }
 
 button {
@@ -26,7 +25,6 @@ button {
   background: white;
   cursor: pointer;
 }
-
 button:hover { background: #edf2f7; }
 button:disabled { opacity: .4; cursor: default; }
 
@@ -146,7 +144,6 @@ th:first-child, .row-number {
   cursor: grab;
   user-select: none;
 }
-
 .row-number:active { cursor: grabbing; }
 
 tr.row-selected > .row-number {
@@ -274,8 +271,9 @@ tr.drop-target { outline: 2px dashed #477fcb; }
   セルをクリックすると編集できます。<br>
   Enter：選択中でも入力中でも、選択行の直後に空白行を挿入し、新しい行のx列を入力モードにします。<br>
   Tab：入力中のセルから次のセルへ移動します。<br>
-  空白のセルを選択してBackspace：その行を削除し、ひとつ前の行のx列を入力モードにします。値が入ったセルでは削除しません。<br>
+  空白のセルを選択してBackspace：その行を削除し、ひとつ前の行のx列を入力モードにします。<br>
   Delete：選択行を確認画面なしで削除します。<br>
+  Ctrl + Z：元に戻す。Ctrl + Y：やり直す。<br>
   行番号をドラッグすると行を並べ替えられます。
 </p>
 
@@ -315,6 +313,7 @@ function undo() {
   rows = JSON.parse(history.pop());
   selectedCell = null;
   selectedRow = null;
+  editing = false;
   render();
   setStatus("操作を元に戻しました。");
 }
@@ -326,6 +325,7 @@ function redo() {
   rows = JSON.parse(future.pop());
   selectedCell = null;
   selectedRow = null;
+  editing = false;
   render();
   setStatus("操作をやり直しました。");
 }
@@ -552,7 +552,8 @@ function editCell(td, rowIndex, key) {
   }
 
   input.addEventListener("keydown", event => {
-    // Backspace：編集中のセルが空なら、その行を削除
+    // Ctrl+Z / Ctrl+Y は document のキャプチャ段階で処理する
+
     if (
       event.key === "Backspace" &&
       input.value === "" &&
@@ -651,10 +652,6 @@ function editCell(td, rowIndex, key) {
   input.addEventListener("blur", () => finish(true));
 }
 
-/*
-  選択行の後ろに行を挿入する。
-  挿入後はx列を編集できるようにする。
-*/
 function insertAfterSelected(initialValues = {x: "", y: ""}) {
   if (selectedRow === null) {
     setStatus("先に行番号またはセルを選択してください。");
@@ -901,11 +898,40 @@ function moveMatch(direction) {
 }
 
 /* キーボード操作 */
+
+/*
+ * キャプチャ段階で処理することで、入力欄・セル編集中でも
+ * Ctrl+Z / Ctrl+Y を表の履歴操作として優先する。
+ */
 document.addEventListener("keydown", event => {
+  if (!event.ctrlKey || event.altKey || event.metaKey) return;
+
+  const key = event.key.toLowerCase();
+
+  if (key === "z" && !event.shiftKey) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    undo();
+    return;
+  }
+
+  if (key === "y" && !event.shiftKey) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    redo();
+  }
+}, true);
+
+/* その他のキーボード操作 */
+document.addEventListener("keydown", event => {
+  // Ctrl+Z / Ctrl+Y は上のキャプチャ処理で処理済み
+  if (event.ctrlKey && ["z", "y"].includes(event.key.toLowerCase())) {
+    return;
+  }
+
   if (editing) return;
 
   const tag = document.activeElement?.tagName;
-
   if (["INPUT", "TEXTAREA", "SELECT"].includes(tag)) return;
 
   // Backspace：空白セルを選択中なら、その行を削除して前の行を編集
