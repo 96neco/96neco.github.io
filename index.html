@@ -751,10 +751,11 @@ function clearTable() {
 
 function copyTable() {
   const text = rows.map(row => `${row.x}\t${row.y}`).join("\n");
+  const successMessage = "コピーしました。Desmosの式入力欄に貼り付けてください";
 
   if (navigator.clipboard && window.isSecureContext) {
     navigator.clipboard.writeText(text)
-      .then(() => setStatus("表をコピーしました。"))
+      .then(() => setStatus(successMessage))
       .catch(() => copyFallback(text));
   } else {
     copyFallback(text);
@@ -768,8 +769,13 @@ function copyFallback(text) {
   area.select();
 
   try {
-    document.execCommand("copy");
-    setStatus("表をコピーしました。");
+    const successful = document.execCommand("copy");
+
+    if (successful) {
+      setStatus("コピーしました。Desmosの式入力欄に貼り付けてください");
+    } else {
+      setStatus("コピーできませんでした。");
+    }
   } catch {
     setStatus("コピーできませんでした。");
   }
