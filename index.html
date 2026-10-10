@@ -219,9 +219,22 @@ tr.drop-target { outline: 2px dashed #477fcb; }
   <button id="redoBtn" onclick="redo()">↷ やり直す</button>
   <button onclick="copyTable()">表をコピー</button>
   <button onclick="clearTable()">表をクリア</button>
-  <button onclick="insertAfterSelected()">選択行の後ろに挿入</button>
+  <button onclick="insertAfterSelected({x:'', y:''})">選択行の後ろに挿入</button>
 </div>
 
+<div id="status">Desmos の表データを読み込んでください。</div>
+
+<!-- データ入力欄を検索欄より上に配置 -->
+<details open>
+  <summary>元データの読み込み</summary>
+  <p class="hint">Desmos の表データを貼り付けて「読み込み」を押してください。</p>
+  <textarea id="sourceInput" placeholder="Desmos の表データをここに貼り付け"></textarea>
+  <div class="toolbar">
+    <button onclick="loadSource()">読み込み</button>
+  </div>
+</details>
+
+<!-- 検索欄をデータ入力欄より下に配置 -->
 <div class="searchbar">
   <input id="searchInput" placeholder="検索する文字を入力…" autocomplete="off">
   <select id="searchColumn" aria-label="検索する列">
@@ -234,17 +247,6 @@ tr.drop-target { outline: 2px dashed #477fcb; }
   <span id="searchCount">0 / 0</span>
   <button onclick="replaceValues()">値を置換</button>
 </div>
-
-<div id="status">Desmos の表データを読み込んでください。</div>
-
-<details>
-  <summary>元データの読み込み</summary>
-  <p class="hint">Desmos の表データを貼り付けて「読み込み」を押してください。</p>
-  <textarea id="sourceInput" placeholder="Desmos の表データをここに貼り付け"></textarea>
-  <div class="toolbar">
-    <button onclick="loadSource()">読み込み</button>
-  </div>
-</details>
 
 <div class="table-wrap">
   <table id="dataTable">
@@ -268,10 +270,11 @@ tr.drop-target { outline: 2px dashed #477fcb; }
 
 <p class="hint">
   行番号をクリックすると行を選択できます。<br>
-  セルをクリックすると編集できます。編集欄で Enter を押すと、内容を保存して後ろに新しい行を挿入します。<br>
-  挿入した行は、すぐに x 列が入力モードになります。<br>
-  空白のセルをクリックして選択し、編集欄を開いていない状態で Backspace を押すと、その行を削除できます。<br>
-  Delete は選択行を削除します。どちらも確認画面が表示されます。<br>
+  セルをクリックすると編集できます。<br>
+  Enter：選択中でも入力中でも、選択行の直後に空白行を挿入し、新しい行のx列を入力モードにします。<br>
+  Tab：入力中のセルから次のセルへ移動します。<br>
+  空白のセルを選択してBackspace：その行を削除します。値が入ったセルでは削除しません。<br>
+  Delete：選択行を削除します。削除時には確認画面が表示されます。<br>
   行番号をドラッグすると行を並べ替えられます。右クリックでも行を操作できます。
 </p>
 
@@ -516,21 +519,15 @@ function editCell(td, rowIndex, key) {
       if (move === "down") nextRow++;
 
       if (nextRow >= 0 && nextRow < rows.length) {
-        const target = document.querySelector(
+        selectedRow = nextRow;
+        selectedCell = {row: nextRow, col: nextCol};
+        render();
+
+        const newCell = document.querySelector(
           `td[data-row="${nextRow}"][data-col="${nextCol}"]`
         );
 
-        if (target) {
-          selectedRow = nextRow;
-          selectedCell = {row: nextRow, col: nextCol};
-          render();
-
-          const newCell = document.querySelector(
-            `td[data-row="${nextRow}"][data-col="${nextCol}"]`
-          );
-
-          if (newCell) editCell(newCell, nextRow, nextCol);
-        }
+        if (newCell) editCell(newCell, nextRow, nextCol);
       }
     }
   }
@@ -551,6 +548,7 @@ function editCell(td, rowIndex, key) {
       selectedRow = rowIndex;
       selectedCell = {row: rowIndex, col: key};
 
+      // 選択中のEnterと同じ処理で、空白行を挿入する
       insertAfterSelected({x: "", y: ""});
 
     } else if (event.key === "Escape") {
@@ -586,36 +584,19 @@ function editCell(td, rowIndex, key) {
   input.addEventListener("blur", () => finish(true));
 }
 
-function insertAfterSelected(initialValues = null) {
+/*
+  選択行の後ろに行を挿入する。
+  引数を渡さない場合も、空白行を作る。
+  挿入後はx列をすぐに編集できるようにする。
+*/
+function insertAfterSelected(initialValues = {x: "", y: ""}) {
   if (selectedRow === null) {
-    setStatus("先に行番号をクリックして、行を選択してください。");
+    setStatus("先に行番号またはセルを選択してください。");
     return;
   }
 
-  let x = "";
-  let y = "";
-
-  if (initialValues) {
-    x = initialValues.x ?? "";
-    y = initialValues.y ?? "";
-  } else {
-    const value = prompt(
-      "挿入する値を入力してください。\n" +
-      "x列とy列はタブ、またはカンマで区切ります。\n" +
-      "例：12.3,45.6\n" +
-      "空欄なら x列・y列とも空の行を挿入します。"
-    );
-
-    if (value === null) return;
-
-    if (value.trim() !== "") {
-      const parts = value.includes("\t")
-        ? value.split("\t")
-        : value.split(",");
-      x = (parts[0] ?? "").trim();
-      y = (parts[1] ?? "").trim();
-    }
-  }
+  const x = initialValues?.x ?? "";
+  const y = initialValues?.y ?? "";
 
   snapshot();
 
@@ -898,7 +879,7 @@ document.addEventListener("keydown", event => {
   const tag = document.activeElement?.tagName;
   if (["INPUT", "TEXTAREA", "SELECT"].includes(tag)) return;
 
-  // Backspace：空白のセルを選択中なら、その行を削除
+  // Backspace：空白セルを選択中なら、その行を削除
   if (event.key === "Backspace") {
     if (selectedCell === null || selectedRow === null) return;
 
@@ -935,11 +916,11 @@ document.addEventListener("keydown", event => {
     return;
   }
 
-  // Enter：選択行の後ろに挿入
+  // Enter：選択行の直後に空白行を挿入し、x列を編集開始
   if (event.key === "Enter") {
     if (selectedRow !== null) {
       event.preventDefault();
-      insertAfterSelected();
+      insertAfterSelected({x: "", y: ""});
     }
     return;
   }
