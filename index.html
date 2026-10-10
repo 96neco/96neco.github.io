@@ -4,688 +4,722 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Desmos表ビューア</title>
+<title>Desmos 表編集ツール</title>
 <style>
   * { box-sizing: border-box; }
+
   body {
-    font-family: sans-serif;
+    font-family: system-ui, sans-serif;
     margin: 16px;
-    background: #f5f6f8;
     color: #222;
+    background: #f7f8fa;
   }
-  h1 { font-size: 23px; margin: 0 0 12px; }
-  h2 { font-size: 17px; margin: 0 0 10px; }
-  p { margin: 8px 0; }
-  textarea {
-    width: 100%;
-    height: 110px;
-    padding: 10px;
-    font-family: monospace;
-    border: 1px solid #bbb;
-    border-radius: 7px;
-    resize: vertical;
-  }
-  button, input, select {
+
+  h2 { margin: 0 0 12px; font-size: 22px; }
+
+  button, input, select, textarea {
     font: inherit;
-    padding: 8px 10px;
-    border: 1px solid #bbb;
+  }
+
+  button {
+    padding: 7px 12px;
+    border: 1px solid #c7cbd1;
     border-radius: 6px;
     background: white;
-    max-width: 100%;
+    cursor: pointer;
   }
-  button { cursor: pointer; }
-  button:hover { background: #eef3fa; }
-  button:disabled { opacity: .45; cursor: not-allowed; }
-  input { min-width: 0; width: 140px; }
-  .toolbar, .fields {
+
+  button:hover { background: #edf2f7; }
+  button:disabled { opacity: .4; cursor: default; }
+
+  .toolbar {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
+    gap: 8px;
     align-items: center;
+    margin: 12px 0;
   }
-  .toolbar { margin: 8px 0; }
-  .panel {
-    background: white;
-    border: 1px solid #d5d9df;
-    border-radius: 9px;
+
+  .searchbar {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
     padding: 12px;
-    margin: 10px 0;
+    background: #fff;
+    border: 1px solid #d7dbe0;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px #0000000b;
   }
-  .muted { color: #606873; font-size: 13px; }
+
+  #searchInput {
+    flex: 1;
+    min-width: 130px;
+    padding: 8px 10px;
+    border: 1px solid #aeb5bf;
+    border-radius: 6px;
+  }
+
+  #searchColumn {
+    padding: 8px;
+    border: 1px solid #aeb5bf;
+    border-radius: 6px;
+    background: white;
+  }
+
+  #searchCount {
+    min-width: 70px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    color: #454c56;
+  }
+
   #status {
-    font-size: 13px;
-    margin: 8px 0;
-    overflow-wrap: anywhere;
+    margin: 10px 2px;
+    min-height: 1.5em;
+    font-size: 14px;
+    color: #515965;
   }
 
-  /* タブ */
-  .tabs {
-    display: flex;
-    gap: 4px;
-    overflow-x: auto;
-    padding: 2px 1px 0;
-    border-bottom: 1px solid #ccd2db;
-  }
-  .tab {
-    flex: 0 0 auto;
-    border: 1px solid transparent;
-    border-bottom: none;
-    border-radius: 7px 7px 0 0;
-    background: #e8ebf0;
-    padding: 9px 13px;
-  }
-  .tab.active {
+  details {
+    margin: 14px 0;
+    padding: 10px;
+    border: 1px solid #d7dbe0;
+    border-radius: 8px;
     background: white;
-    border-color: #ccd2db;
-    font-weight: bold;
-    position: relative;
-    margin-bottom: -1px;
   }
-  .tab-content {
-    background: white;
-    border: 1px solid #ccd2db;
-    border-top: none;
-    border-radius: 0 0 9px 9px;
-    padding: 13px;
-    min-height: 125px;
-  }
-  .tab-panel[hidden] { display: none; }
-  .field {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
+
+  textarea {
+    width: 100%;
+    min-height: 140px;
+    margin-top: 8px;
+    padding: 10px;
+    font-family: Consolas, monospace;
     font-size: 13px;
   }
-  .field input, .field select { width: 150px; }
-  .primary {
-    background: #2869c7;
-    color: white;
-    border-color: #2869c7;
-  }
-  .primary:hover { background: #1e55a5; }
-  .danger { color: #a32121; }
 
-  /* 表 */
   .table-wrap {
-    height: 52vh;
-    min-height: 220px;
+    width: 100%;
+    max-height: 65vh;
     overflow: auto;
+    border: 1px solid #cbd0d7;
+    border-radius: 8px;
     background: white;
-    border: 1px solid #ccd2db;
-    border-radius: 7px;
   }
+
   table {
     width: 100%;
+    table-layout: fixed;
     border-collapse: separate;
     border-spacing: 0;
   }
+
+  col.row-col { width: 60px; }
+  col.data-col { width: calc((100% - 60px) / 2); }
+
   th, td {
-    padding: 7px 12px;
-    border-bottom: 1px solid #e1e4e8;
-    text-align: right;
+    height: 38px;
+    padding: 0;
+    border-right: 1px solid #e0e3e7;
+    border-bottom: 1px solid #e0e3e7;
+    overflow: hidden;
     white-space: nowrap;
+    text-overflow: ellipsis;
   }
+
   th {
     position: sticky;
     top: 0;
     z-index: 2;
-    background: #e8edf4;
+    background: #edf0f4;
+    text-align: center;
+    font-weight: 600;
   }
-  th:first-child, td:first-child { text-align: center; }
-  td.editable { cursor: text; }
-  td.editable:hover {
-    outline: 2px solid #7aa7e8;
+
+  th:first-child, .row-number {
+    width: 60px;
+    text-align: center;
+    background: #f3f4f6;
+    color: #606975;
+  }
+
+  .row-number {
+    cursor: grab;
+    user-select: none;
+  }
+
+  .row-number:active { cursor: grabbing; }
+
+  td.data-cell { cursor: text; }
+
+  td.data-cell .cell-text {
+    display: block;
+    overflow: hidden;
+    padding: 8px;
+    text-overflow: ellipsis;
+  }
+
+  td.data-cell:hover { background: #f3f7fc; }
+
+  td.data-cell.selected {
+    outline: 2px solid #477fcb;
     outline-offset: -2px;
   }
-  tr.highlight { background: #fff0a8 !important; }
-  td input.cell-editor {
-    width: 100%;
-    min-width: 80px;
-    padding: 4px;
-    margin: 0;
-    text-align: right;
+
+  td.data-cell.match {
+    background: #fff0a8;
   }
-  tbody tr:hover { background: #f0f5ff; }
+
+  td.data-cell.current-match {
+    background: #ffbd57;
+    outline: 3px solid #df8613;
+    outline-offset: -3px;
+  }
+
+  .cell-editor {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    height: 36px;
+    padding: 6px 8px;
+    border: 2px solid #477fcb;
+    border-radius: 0;
+    outline: none;
+    background: #fff;
+  }
+
+  tr.dragging { opacity: .4; }
+  tr.drop-target { outline: 2px dashed #477fcb; }
+
+  .bottom-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 12px 0;
+  }
+
+  .hint {
+    font-size: 13px;
+    color: #656d78;
+    line-height: 1.6;
+  }
 
   @media (max-width: 600px) {
-    body { margin: 9px; }
-    .field { flex: 1 1 130px; }
-    .field input, .field select { width: 100%; }
-    .table-wrap { height: 48vh; }
-    th, td { padding: 7px 9px; }
+    body { margin: 8px; }
+    .searchbar { gap: 6px; }
+    #searchInput { flex-basis: 100%; }
   }
 </style>
 </head>
 <body>
 
-<h1>Desmos表ビューア</h1>
+<h2>Desmos 表編集ツール</h2>
 
-<details class="panel">
-  <summary>データを読み込む</summary>
-  <p class="muted">拡張機能で取得した table の内容を貼り付けてください。</p>
-  <textarea id="source" placeholder="ここに table { ... } を貼り付け"></textarea>
+<div class="toolbar">
+  <button id="undoBtn" onclick="undo()">↶ 元に戻す</button>
+  <button id="redoBtn" onclick="redo()">↷ やり直す</button>
+  <button onclick="copyTable()">表をコピー</button>
+  <button onclick="clearTable()">表をクリア</button>
+</div>
+
+<div class="searchbar">
+  <input id="searchInput" type="text"
+         placeholder="検索する文字を入力…" autocomplete="off">
+
+  <select id="searchColumn" aria-label="検索する列">
+    <option value="both">両方</option>
+    <option value="x">x列</option>
+    <option value="y">y列</option>
+  </select>
+
+  <button onclick="moveMatch(-1)" title="前の一致箇所">↑</button>
+  <button onclick="moveMatch(1)" title="次の一致箇所">↓</button>
+
+  <span id="searchCount">0 / 0</span>
+</div>
+
+<div id="status">Desmos の表データを読み込んでください。</div>
+
+<details>
+  <summary>元データの読み込み</summary>
+  <p class="hint">
+    Desmos の表データを貼り付けて「読み込み」を押してください。
+    x_1 と y_1 の配列を読み込みます。
+  </p>
+  <textarea id="sourceInput"
+    placeholder="Desmos の表データをここに貼り付け"></textarea>
   <div class="toolbar">
-    <button id="convert" class="primary">表に変換</button>
-    <button id="clear">データをクリア</button>
+    <button onclick="loadSource()">読み込み</button>
   </div>
 </details>
 
-<div class="toolbar">
-  <button id="copy" class="primary" disabled>編集後の表をコピー</button>
-  <button id="undoBtn" disabled>↶ 元に戻す</button>
-  <button id="redoBtn" disabled>↷ やり直す</button>
-</div>
-
-<p id="status" aria-live="polite">データを待っています。</p>
-
-<section class="panel">
-  <h2>編集機能</h2>
-
-  <div class="tabs" role="tablist" aria-label="編集機能">
-    <button class="tab active" role="tab" aria-selected="true" data-tab="replace">① 置換</button>
-    <button class="tab" role="tab" aria-selected="false" data-tab="insert">② 挿入</button>
-    <button class="tab" role="tab" aria-selected="false" data-tab="append">③ 追加</button>
-    <button class="tab" role="tab" aria-selected="false" data-tab="delete">④ 削除</button>
-    <button class="tab" role="tab" aria-selected="false" data-tab="edit">⑤ 編集</button>
-    <button class="tab" role="tab" aria-selected="false" data-tab="swap">⑥ 入替</button>
-  </div>
-
-  <div class="tab-content">
-    <div class="tab-panel" id="panel-replace" role="tabpanel">
-      <h2>値を置換</h2>
-      <div class="fields">
-        <label class="field">対象の列
-          <select id="replaceColumn">
-            <option value="x">x₁</option>
-            <option value="y">y₁</option>
-            <option value="both">両方</option>
-          </select>
-        </label>
-        <label class="field">検索値
-          <input id="replaceFrom" placeholder="変更前">
-        </label>
-        <label class="field">変更後
-          <input id="replaceTo" placeholder="変更後">
-        </label>
-        <label class="field">一致方法
-          <select id="replaceMode">
-            <option value="exact">完全一致</option>
-            <option value="partial">部分一致</option>
-          </select>
-        </label>
-      </div>
-      <div class="toolbar">
-        <button id="replaceBtn" class="primary">置換する</button>
-      </div>
-      <p class="muted">一致したすべてのセルを変更します。</p>
-    </div>
-
-    <div class="tab-panel" id="panel-insert" role="tabpanel" hidden>
-      <h2>指定した位置に行を挿入</h2>
-      <div class="fields">
-        <label class="field">挿入する行番号
-          <input id="insertAt" type="number" min="1" placeholder="行番号">
-        </label>
-        <label class="field">x₁
-          <input id="insertX" placeholder="xの値">
-        </label>
-        <label class="field">y₁
-          <input id="insertY" placeholder="yの値">
-        </label>
-      </div>
-      <div class="toolbar">
-        <button id="insertBtn" class="primary">指定行の前に挿入</button>
-      </div>
-      <p class="muted">例：3を指定すると、現在の3行目の前に新しい行を入れます。</p>
-    </div>
-
-    <div class="tab-panel" id="panel-append" role="tabpanel" hidden>
-      <h2>末尾に行を追加</h2>
-      <div class="fields">
-        <label class="field">x₁
-          <input id="appendX" placeholder="xの値">
-        </label>
-        <label class="field">y₁
-          <input id="appendY" placeholder="yの値">
-        </label>
-      </div>
-      <div class="toolbar">
-        <button id="appendBtn" class="primary">末尾に追加</button>
-      </div>
-    </div>
-
-    <div class="tab-panel" id="panel-delete" role="tabpanel" hidden>
-      <h2>指定した行を削除</h2>
-      <div class="fields">
-        <label class="field">削除する行番号
-          <input id="deleteAt" type="number" min="1" placeholder="行番号">
-        </label>
-      </div>
-      <div class="toolbar">
-        <button id="deleteBtn" class="danger">この行を削除</button>
-      </div>
-      <p class="muted">x₁とy₁の値をセットで削除します。</p>
-    </div>
-
-    <div class="tab-panel" id="panel-edit" role="tabpanel" hidden>
-      <h2>セルを直接編集</h2>
-      <p>表のx₁またはy₁の値をクリックすると編集できます。</p>
-      <p class="muted">Enterで確定、Escでキャンセル。セルから移動しても入力内容を確定します。</p>
-    </div>
-
-    <div class="tab-panel" id="panel-swap" role="tabpanel" hidden>
-      <h2>2つの行を入れ替え</h2>
-      <div class="fields">
-        <label class="field">行A
-          <input id="swapA" type="number" min="1" placeholder="行番号">
-        </label>
-        <label class="field">行B
-          <input id="swapB" type="number" min="1" placeholder="行番号">
-        </label>
-      </div>
-      <div class="toolbar">
-        <button id="swapBtn" class="primary">行を入れ替える</button>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section class="panel">
-  <h2>検索・行へ移動</h2>
-  <div class="fields">
-    <label class="field">部分一致検索
-      <input id="search" placeholder="検索する値">
-    </label>
-    <label class="field">行番号へ移動
-      <input id="jump" type="number" min="1" placeholder="行番号">
-    </label>
-  </div>
-  <div class="toolbar">
-    <button id="go">指定行へ移動</button>
-    <button id="resetSearch">検索解除</button>
-  </div>
-</section>
-
-<h2>表 <span class="muted">（セルをクリックして編集）</span></h2>
-<div class="table-wrap" id="tableWrap">
-  <table>
+<div class="table-wrap">
+  <table id="dataTable">
+    <colgroup>
+      <col class="row-col">
+      <col class="data-col">
+      <col class="data-col">
+    </colgroup>
     <thead>
-      <tr><th>行</th><th>x₁</th><th>y₁</th></tr>
+      <tr>
+        <th>行</th>
+        <th>x₁</th>
+        <th>y₁</th>
+      </tr>
     </thead>
-    <tbody id="result">
-      <tr><td colspan="3">データがありません</td></tr>
-    </tbody>
+    <tbody id="tableBody"></tbody>
   </table>
 </div>
 
-<script>
-const $ = id => document.getElementById(id);
+<div class="bottom-controls">
+  <button onclick="appendRow()">＋ 最後に行を追加</button>
+  <button onclick="copyTable()">表をコピー</button>
+</div>
 
+<p class="hint">
+  セルをクリックすると直接編集できます。行番号を右クリックすると、
+  行の挿入・削除・入れ替えができます。行番号をドラッグしても並べ替えられます。
+  検索は部分一致です。
+</p>
+
+<script>
 let rows = [];
-let undoStack = [];
-let redoStack = [];
-const MAX_HISTORY = 100;
+let selectedCell = null;
+let matches = [];
+let matchIndex = -1;
+let history = [];
+let future = [];
+let dragIndex = null;
+
+const $ = id => document.getElementById(id);
 
 function setStatus(message) {
   $("status").textContent = message;
 }
 
-function getArray(text, name) {
-  const re = new RegExp(name + "\\s*=\\s*\\[([\\s\\S]*?)\\]");
-  const match = text.match(re);
-  if (!match) throw new Error(name + " が見つかりません");
-  if (!match[1].trim()) return [];
-
-  return match[1].split(",").map(value => {
-    const s = value.trim();
-    if (s === "" || !Number.isFinite(Number(s))) {
-      throw new Error("数値を読み取れません: " + s);
-    }
-    return s;
-  });
-}
-
-function validNumber(value) {
-  const s = String(value).trim();
-  return s !== "" && Number.isFinite(Number(s));
+function snapshot() {
+  history.push(JSON.stringify(rows));
+  if (history.length > 100) history.shift();
+  future = [];
+  updateHistoryButtons();
 }
 
 function updateHistoryButtons() {
-  $("undoBtn").disabled = !undoStack.length;
-  $("redoBtn").disabled = !redoStack.length;
-}
-
-function saveHistory() {
-  undoStack.push(rows.map(r => ({ ...r })));
-  if (undoStack.length > MAX_HISTORY) undoStack.shift();
-  redoStack = [];
-  updateHistoryButtons();
-}
-
-function mutate(action, message) {
-  saveHistory();
-  action();
-  render();
-  if (message) setStatus(message);
+  $("undoBtn").disabled = history.length === 0;
+  $("redoBtn").disabled = future.length === 0;
 }
 
 function undo() {
-  if (!undoStack.length) return;
-  redoStack.push(rows.map(r => ({ ...r })));
-  rows = undoStack.pop();
+  if (!history.length) return;
+  future.push(JSON.stringify(rows));
+  rows = JSON.parse(history.pop());
+  selectedCell = null;
   render();
   updateHistoryButtons();
-  setStatus("操作を元に戻しました");
+  setStatus("操作を元に戻しました。");
 }
 
 function redo() {
-  if (!redoStack.length) return;
-  undoStack.push(rows.map(r => ({ ...r })));
-  if (undoStack.length > MAX_HISTORY) undoStack.shift();
-  rows = redoStack.pop();
+  if (!future.length) return;
+  history.push(JSON.stringify(rows));
+  rows = JSON.parse(future.pop());
+  selectedCell = null;
   render();
   updateHistoryButtons();
-  setStatus("操作をやり直しました");
+  setStatus("操作をやり直しました。");
 }
 
-function resetHistory() {
-  undoStack = [];
-  redoStack = [];
-  updateHistoryButtons();
+function parseArray(source, name) {
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const regex = new RegExp(
+    escaped + "\\s*=\\s*\\[([\\s\\S]*?)\\]",
+    "m"
+  );
+  const found = source.match(regex);
+  if (!found) return null;
+
+  return found[1].split(",")
+    .map(v => v.trim())
+    .filter(v => v !== "");
+}
+
+function loadSource() {
+  const source = $("sourceInput").value;
+  const xs = parseArray(source, "x_1");
+  const ys = parseArray(source, "y_1");
+
+  if (!xs || !ys) {
+    setStatus("x_1 または y_1 の配列が見つかりません。");
+    return;
+  }
+
+  snapshot();
+  const length = Math.max(xs.length, ys.length);
+  rows = Array.from({ length }, (_, i) => ({
+    x: xs[i] ?? "",
+    y: ys[i] ?? ""
+  }));
+
+  selectedCell = null;
+  render();
+  setStatus(`${rows.length} 行を読み込みました。`);
 }
 
 function render() {
-  const query = $("search").value.trim().toLowerCase();
-  const body = $("result");
-  body.replaceChildren();
+  const tbody = $("tableBody");
+  tbody.replaceChildren();
 
-  let count = 0;
-  const fragment = document.createDocumentFragment();
-
-  for (let i = 0; i < rows.length; i++) {
-    const r = rows[i];
-
-    if (query &&
-        !r.x.toLowerCase().includes(query) &&
-        !r.y.toLowerCase().includes(query)) continue;
-
-    count++;
+  rows.forEach((row, index) => {
     const tr = document.createElement("tr");
-    tr.dataset.index = i;
+    tr.dataset.index = index;
 
-    const num = document.createElement("td");
-    num.textContent = i + 1;
-    tr.appendChild(num);
+    const numberCell = document.createElement("td");
+    numberCell.className = "row-number";
+    numberCell.textContent = index + 1;
+    numberCell.title = "右クリックで行の操作／ドラッグで並べ替え";
+    numberCell.addEventListener("contextmenu", event => {
+      event.preventDefault();
+      rowMenu(index);
+    });
+    numberCell.draggable = true;
+    numberCell.addEventListener("dragstart", event => {
+      dragIndex = index;
+      tr.classList.add("dragging");
+      event.dataTransfer.effectAllowed = "move";
+    });
+    numberCell.addEventListener("dragend", () => {
+      dragIndex = null;
+      document.querySelectorAll("tr").forEach(r =>
+        r.classList.remove("dragging", "drop-target")
+      );
+    });
+    tr.addEventListener("dragover", event => {
+      if (dragIndex === null || dragIndex === index) return;
+      event.preventDefault();
+      tr.classList.add("drop-target");
+    });
+    tr.addEventListener("dragleave", () => {
+      tr.classList.remove("drop-target");
+    });
+    tr.addEventListener("drop", event => {
+      event.preventDefault();
+      if (dragIndex === null || dragIndex === index) return;
+      snapshot();
+      const moved = rows.splice(dragIndex, 1)[0];
+      rows.splice(index, 0, moved);
+      selectedCell = null;
+      render();
+      updateSearch(false);
+      setStatus("行を並べ替えました。");
+    });
 
-    for (const key of ["x", "y"]) {
+    tr.appendChild(numberCell);
+
+    ["x", "y"].forEach(key => {
       const td = document.createElement("td");
-      td.className = "editable";
-      td.dataset.column = key;
-      td.textContent = r[key];
-      td.title = "クリックして編集";
+      td.className = "data-cell";
+      td.dataset.row = index;
+      td.dataset.col = key;
+
+      const isSelected = selectedCell &&
+        selectedCell.row === index && selectedCell.col === key;
+      if (isSelected) td.classList.add("selected");
+
+      const span = document.createElement("span");
+      span.className = "cell-text";
+      span.textContent = row[key];
+      td.appendChild(span);
+      td.addEventListener("click", () => editCell(td, index, key));
+
       tr.appendChild(td);
-    }
-    fragment.appendChild(tr);
-  }
+    });
 
-  if (count) {
-    body.appendChild(fragment);
-  } else {
-    const tr = document.createElement("tr");
-    const td = document.createElement("td");
-    td.colSpan = 3;
-    td.textContent = "該当するデータがありません";
-    tr.appendChild(td);
-    body.appendChild(tr);
-  }
+    tbody.appendChild(tr);
+  });
 
-  setStatus(rows.length + "行中 " + count + "行を表示");
-  $("copy").disabled = rows.length === 0;
+  updateSearch(false);
+  updateHistoryButtons();
 }
 
-// タブ切り替え
-document.querySelectorAll(".tab").forEach(tab => {
-  tab.addEventListener("click", () => {
-    document.querySelectorAll(".tab").forEach(t => {
-      const active = t === tab;
-      t.classList.toggle("active", active);
-      t.setAttribute("aria-selected", String(active));
-    });
+function editCell(td, rowIndex, key) {
+  if (td.querySelector("input")) return;
 
-    document.querySelectorAll(".tab-panel").forEach(panel => {
-      panel.hidden = panel.id !== "panel-" + tab.dataset.tab;
-    });
-  });
-});
-
-// データ読み込み
-$("convert").onclick = () => {
-  try {
-    const xs = getArray($("source").value, "x_1");
-    const ys = getArray($("source").value, "y_1");
-
-    if (xs.length !== ys.length) {
-      throw new Error("列の長さが違います。x₁=" + xs.length +
-        "個、y₁=" + ys.length + "個");
-    }
-
-    rows = xs.map((x, i) => ({ x, y: ys[i] }));
-    $("search").value = "";
-    resetHistory();
-    render();
-    setStatus(rows.length + "行を読み込みました");
-  } catch (e) {
-    setStatus("エラー：" + e.message);
-  }
-};
-
-// ⑤ セルを直接編集
-$("result").addEventListener("click", event => {
-  const td = event.target.closest("td.editable");
-  if (!td || td.querySelector("input")) return;
-
-  const tr = td.closest("tr");
-  const index = Number(tr.dataset.index);
-  const key = td.dataset.column;
-  const original = rows[index][key];
+  selectedCell = { row: rowIndex, col: key };
+  const oldValue = rows[rowIndex][key];
+  td.classList.add("selected");
+  td.replaceChildren();
 
   const input = document.createElement("input");
+  input.type = "text";
   input.className = "cell-editor";
-  input.value = original;
-  input.setAttribute("aria-label", "セルの値を編集");
-  td.textContent = "";
+  input.value = oldValue;
+  input.setAttribute("aria-label", `${rowIndex + 1}行目 ${key}列`);
   td.appendChild(input);
   input.focus();
   input.select();
 
   let finished = false;
 
-  function finish(commit) {
+  function finish(save) {
     if (finished) return;
     finished = true;
-    const value = input.value.trim();
 
-    if (commit && value !== original) {
-      if (!validNumber(value)) {
-        render();
-        setStatus("数値を入力してください。変更は取り消されました");
-        return;
-      }
-      mutate(() => { rows[index][key] = value; },
-        (index + 1) + "行目の" + (key === "x" ? "x₁" : "y₁") + "を変更しました");
-    } else {
-      render();
+    const newValue = input.value;
+    if (save && newValue !== oldValue) {
+      snapshot();
+      rows[rowIndex][key] = newValue;
+    }
+
+    selectedCell = { row: rowIndex, col: key };
+    render();
+    if (save && newValue !== oldValue) {
+      setStatus(`${rowIndex + 1}行目の${key}列を編集しました。`);
     }
   }
 
-  input.addEventListener("keydown", e => {
-    if (e.key === "Enter") {
-      e.preventDefault();
+  input.addEventListener("keydown", event => {
+    if (event.key === "Enter") {
+      event.preventDefault();
       finish(true);
-    } else if (e.key === "Escape") {
-      e.preventDefault();
+    }
+    if (event.key === "Escape") {
+      event.preventDefault();
       finish(false);
+    }
+    if (event.key === "Tab") {
+      event.preventDefault();
+      finish(true);
+      const nextKey = key === "x" ? "y" : "x";
+      const nextRow = key === "x" ? rowIndex : rowIndex + 1;
+      if (rows[nextRow]) {
+        const nextCell = document.querySelector(
+          `td[data-row="${nextRow}"][data-col="${nextKey}"]`
+        );
+        if (nextCell) editCell(nextCell, nextRow, nextKey);
+      }
     }
   });
 
   input.addEventListener("blur", () => finish(true));
+}
+
+function rowMenu(index) {
+  const action = prompt(
+    `${index + 1}行目の操作\n` +
+    "1：この行の前に挿入\n" +
+    "2：この行を削除\n" +
+    "3：別の行と入れ替え\n" +
+    "番号を入力してください"
+  );
+
+  if (action === "1") {
+    snapshot();
+    rows.splice(index, 0, { x: "", y: "" });
+    render();
+    setStatus(`${index + 1}行目の前に行を挿入しました。`);
+  } else if (action === "2") {
+    if (!confirm(`${index + 1}行目を削除しますか？`)) return;
+    snapshot();
+    rows.splice(index, 1);
+    selectedCell = null;
+    render();
+    setStatus(`${index + 1}行目を削除しました。`);
+  } else if (action === "3") {
+    const input = prompt(
+      `入れ替え先の行番号を入力してください（1〜${rows.length}）`
+    );
+    if (input === null || input.trim() === "") return;
+    const target = Number(input) - 1;
+    if (!Number.isInteger(target) || target < 0 || target >= rows.length) {
+      setStatus("有効な行番号を入力してください。");
+      return;
+    }
+    if (target === index) return;
+
+    snapshot();
+    [rows[index], rows[target]] = [rows[target], rows[index]];
+    render();
+    setStatus(`${index + 1}行目と${target + 1}行目を入れ替えました。`);
+  }
+}
+
+function appendRow() {
+  snapshot();
+  rows.push({ x: "", y: "" });
+  render();
+  setStatus("最後に行を追加しました。");
+}
+
+function clearTable() {
+  if (!confirm("表のデータをすべて消去しますか？")) return;
+  snapshot();
+  rows = [];
+  selectedCell = null;
+  render();
+  setStatus("表をクリアしました。");
+}
+
+function copyTable() {
+  const text = rows.map(row => `${row.x}\t${row.y}`).join("\n");
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text)
+      .then(() => setStatus("表をコピーしました。"))
+      .catch(() => copyFallback(text));
+  } else {
+    copyFallback(text);
+  }
+}
+
+function copyFallback(text) {
+  const area = document.createElement("textarea");
+  area.value = text;
+  document.body.appendChild(area);
+  area.select();
+  try {
+    document.execCommand("copy");
+    setStatus("表をコピーしました。");
+  } catch {
+    setStatus("コピーできませんでした。ブラウザの権限を確認してください。");
+  }
+  area.remove();
+}
+
+/* 検索 */
+
+$("searchInput").addEventListener("input", () => updateSearch(true));
+$("searchColumn").addEventListener("change", () => updateSearch(true));
+
+function updateSearch(jumpToFirst = true) {
+  const query = $("searchInput").value;
+  const column = $("searchColumn").value;
+  matches = [];
+  matchIndex = -1;
+
+  if (query !== "") {
+    rows.forEach((row, rowIndex) => {
+      const keys = column === "both" ? ["x", "y"] : [column];
+      keys.forEach(key => {
+        if (String(row[key]).includes(query)) {
+          matches.push({ row: rowIndex, col: key });
+        }
+      });
+    });
+  }
+
+  if (matches.length) {
+    matchIndex = 0;
+    if (jumpToFirst) scrollToMatch();
+  }
+
+  $("searchCount").textContent = matches.length
+    ? `${matchIndex + 1} / ${matches.length}`
+    : "0 / 0";
+
+  highlightMatches();
+}
+
+function highlightMatches() {
+  document.querySelectorAll("td.data-cell").forEach(td => {
+    td.classList.remove("match", "current-match");
+  });
+
+  matches.forEach((match, index) => {
+    const td = document.querySelector(
+      `td[data-row="${match.row}"][data-col="${match.col}"]`
+    );
+    if (!td) return;
+    td.classList.add("match");
+    if (index === matchIndex) td.classList.add("current-match");
+  });
+
+  $("searchCount").textContent = matches.length
+    ? `${matchIndex + 1} / ${matches.length}`
+    : "0 / 0";
+}
+
+function scrollToMatch() {
+  if (matchIndex < 0 || !matches[matchIndex]) return;
+  const match = matches[matchIndex];
+  const td = document.querySelector(
+    `td[data-row="${match.row}"][data-col="${match.col}"]`
+  );
+  if (!td) return;
+
+  td.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+  highlightMatches();
+}
+
+function moveMatch(direction) {
+  if (!matches.length) {
+    setStatus("一致する箇所がありません。");
+    return;
+  }
+  matchIndex = (matchIndex + direction + matches.length) % matches.length;
+  scrollToMatch();
+}
+
+/* Enter / Shift+Enter でも検索結果を移動 */
+$("searchInput").addEventListener("keydown", event => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    moveMatch(event.shiftKey ? -1 : 1);
+  }
 });
 
-// ① 置換
-$("replaceBtn").onclick = () => {
-  if (!rows.length) return setStatus("先に表を読み込んでください");
+/* ① 値の置換：検索語を対象に、選択した列の部分文字列を置き換える */
+function replaceValues() {
+  const query = $("searchInput").value;
+  if (!query) {
+    setStatus("先に検索欄に置換対象の文字を入力してください。");
+    return;
+  }
 
-  const from = $("replaceFrom").value;
-  const to = $("replaceTo").value.trim();
-  const column = $("replaceColumn").value;
-  const mode = $("replaceMode").value;
+  const replacement = prompt(
+    `「${query}」を何に置き換えますか？`,
+    ""
+  );
+  if (replacement === null) return;
 
-  if (!from) return setStatus("検索値を入力してください");
-  if (!validNumber(to)) return setStatus("変更後の値には数値を入力してください");
-
+  const column = $("searchColumn").value;
   const keys = column === "both" ? ["x", "y"] : [column];
+
   let count = 0;
-
-  rows.forEach(r => keys.forEach(key => {
-    if (mode === "exact" ? r[key] === from : r[key].includes(from)) count++;
-  }));
-
-  if (!count) return setStatus("一致する値がありませんでした");
-  if (!confirm(count + "個のセルを置換します。よろしいですか？")) return;
-
-  mutate(() => {
-    rows.forEach(r => keys.forEach(key => {
-      if (mode === "exact" ? r[key] === from : r[key].includes(from)) {
-        r[key] = mode === "exact" ? to : r[key].split(from).join(to);
+  const changed = rows.map(row => {
+    const copy = { ...row };
+    keys.forEach(key => {
+      if (String(copy[key]).includes(query)) {
+        copy[key] = String(copy[key]).split(query).join(replacement);
+        count++;
       }
-    }));
-  }, count + "個のセルを置換しました");
-};
+    });
+    return copy;
+  });
 
-// ② 挿入
-$("insertBtn").onclick = () => {
-  if (!rows.length) return setStatus("先に表を読み込んでください");
-
-  const n = Number($("insertAt").value);
-  const x = $("insertX").value.trim();
-  const y = $("insertY").value.trim();
-
-  if (!Number.isInteger(n) || n < 1 || n > rows.length) {
-    return setStatus("挿入位置は1〜" + rows.length + "行目で指定してください");
-  }
-  if (!validNumber(x) || !validNumber(y)) {
-    return setStatus("x₁とy₁に数値を入力してください");
+  if (!count) {
+    setStatus("置換対象がありません。");
+    return;
   }
 
-  mutate(() => rows.splice(n - 1, 0, { x, y }),
-    n + "行目の前に行を挿入しました");
-};
-
-// ③ 末尾に追加
-$("appendBtn").onclick = () => {
-  const x = $("appendX").value.trim();
-  const y = $("appendY").value.trim();
-
-  if (!validNumber(x) || !validNumber(y)) {
-    return setStatus("x₁とy₁に数値を入力してください");
-  }
-
-  mutate(() => rows.push({ x, y }), "末尾に行を追加しました");
-  $("appendX").value = "";
-  $("appendY").value = "";
-};
-
-// ④ 削除
-$("deleteBtn").onclick = () => {
-  const n = Number($("deleteAt").value);
-
-  if (!Number.isInteger(n) || n < 1 || n > rows.length) {
-    return setStatus("削除する行は1〜" + rows.length + "で指定してください");
-  }
-  if (!confirm(n + "行目を削除します。よろしいですか？")) return;
-
-  mutate(() => rows.splice(n - 1, 1), n + "行目を削除しました");
-};
-
-// ⑥ 入れ替え
-$("swapBtn").onclick = () => {
-  const a = Number($("swapA").value);
-  const b = Number($("swapB").value);
-
-  if (![a, b].every(n => Number.isInteger(n) && n >= 1 && n <= rows.length)) {
-    return setStatus("行番号は1〜" + rows.length + "で指定してください");
-  }
-  if (a === b) return setStatus("異なる行番号を指定してください");
-
-  mutate(() => {
-    [rows[a - 1], rows[b - 1]] = [rows[b - 1], rows[a - 1]];
-  }, a + "行目と" + b + "行目を入れ替えました");
-};
-
-// ⑦ 元に戻す・やり直す
-$("undoBtn").onclick = undo;
-$("redoBtn").onclick = redo;
-
-// 検索
-$("search").addEventListener("input", render);
-$("resetSearch").onclick = () => {
-  $("search").value = "";
+  snapshot();
+  rows = changed;
   render();
-};
+  setStatus(`${count} 個のセルを置換しました。`);
+}
 
-// 行へ移動
-$("go").onclick = () => {
-  const n = Number($("jump").value);
-  if (!Number.isInteger(n) || n < 1 || n > rows.length) {
-    return setStatus("1〜" + rows.length + "の行番号を入力してください");
+/* Ctrl+H で置換 */
+document.addEventListener("keydown", event => {
+  if (event.ctrlKey && event.key.toLowerCase() === "h") {
+    event.preventDefault();
+    replaceValues();
   }
+});
 
-  $("search").value = "";
-  render();
-
-  const tr = $("result").querySelector('tr[data-index="' + (n - 1) + '"]');
-  if (tr) {
-    tr.scrollIntoView({ block: "center" });
-    tr.classList.add("highlight");
-  }
-};
-
-// ⑧ コピー
-$("copy").onclick = async () => {
-  const text = rows.map(r => r.x + "\t" + r.y).join("\n");
-
-  try {
-    await navigator.clipboard.writeText(text);
-    setStatus("編集後の表をコピーしました（タブ区切り）");
-  } catch {
-    const area = document.createElement("textarea");
-    area.value = text;
-    area.style.position = "fixed";
-    area.style.opacity = "0";
-    document.body.appendChild(area);
-    area.select();
-
-    let copied = false;
-    try { copied = document.execCommand("copy"); } catch {}
-    area.remove();
-
-    setStatus(copied
-      ? "編集後の表をコピーしました（タブ区切り）"
-      : "自動コピーできませんでした。ブラウザの権限を確認してください");
-  }
-};
-
-// すべてクリア
-$("clear").onclick = () => {
-  if (rows.length && !confirm("表と編集履歴を消去しますか？")) return;
-  rows = [];
-  $("source").value = "";
-  $("search").value = "";
-  $("jump").value = "";
-  resetHistory();
-  render();
-  setStatus("クリアしました");
-};
+updateHistoryButtons();
+render();
 </script>
 </body>
 </html>
