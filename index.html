@@ -16,7 +16,6 @@ body {
 }
 
 h2 { margin: 0 0 12px; font-size: 22px; }
-
 button, input, select, textarea { font: inherit; }
 
 button {
@@ -26,7 +25,6 @@ button {
   background: white;
   cursor: pointer;
 }
-
 button:hover { background: #edf2f7; }
 button:disabled { opacity: .4; cursor: default; }
 
@@ -146,7 +144,6 @@ th:first-child, .row-number {
   cursor: grab;
   user-select: none;
 }
-
 .row-number:active { cursor: grabbing; }
 
 tr.row-selected > .row-number {
@@ -272,9 +269,9 @@ tr.drop-target { outline: 2px dashed #477fcb; }
 <p class="hint">
   行番号をクリックすると行を選択できます。選択した行は青く表示されます。<br>
   選択中に Enter キーを押すと、その行の後ろに新しい行を挿入できます。<br>
-  挿入時は x列とy列の値をタブ区切り、またはカンマ区切りで入力してください。<br>
-  セルをクリックして直接編集できます。矢印キーでセルを移動できます。<br>
-  行を選択した状態で Delete / Backspace を押すと削除できます。確認画面が表示されます。<br>
+  セルの編集中に Enter を押した場合も、編集内容を保存して後ろに行を挿入します。<br>
+  挿入後は新しい行の x 列がすぐに入力モードになります。<br>
+  Delete / Backspace で選択行を削除できます。確認画面が表示されます。<br>
   行番号をドラッグすると行を並べ替えられます。右クリックで行の操作メニューを開けます。
 </p>
 
@@ -391,6 +388,7 @@ function render() {
     });
 
     numberCell.draggable = true;
+
     numberCell.addEventListener("dragstart", event => {
       dragIndex = index;
       selectedRow = index;
@@ -540,16 +538,34 @@ function editCell(td, rowIndex, key) {
   input.addEventListener("keydown", event => {
     if (event.key === "Enter") {
       event.preventDefault();
-      finish(true, key === "x" ? "right" : "down");
+
+      // 編集内容を保存してから後ろに新しい行を挿入
+      const newValue = input.value;
+
+      if (newValue !== oldValue) {
+        snapshot();
+        rows[rowIndex][key] = newValue;
+      }
+
+      finished = true;
+      editing = false;
+      selectedRow = rowIndex;
+      selectedCell = {row: rowIndex, col: key};
+
+      insertAfterSelected({x: "", y: ""});
+
     } else if (event.key === "Escape") {
       event.preventDefault();
       finish(false);
+
     } else if (event.key === "Tab") {
       event.preventDefault();
       finish(true, key === "x" ? "right" : "down");
+
     } else if (event.key === "ArrowUp" || event.key === "ArrowDown") {
       event.preventDefault();
       finish(true, event.key === "ArrowUp" ? "up" : "down");
+
     } else if (
       event.key === "ArrowLeft" &&
       input.selectionStart === 0 &&
@@ -557,6 +573,7 @@ function editCell(td, rowIndex, key) {
     ) {
       event.preventDefault();
       finish(true, "left");
+
     } else if (
       event.key === "ArrowRight" &&
       input.selectionStart === input.value.length &&
@@ -570,39 +587,54 @@ function editCell(td, rowIndex, key) {
   input.addEventListener("blur", () => finish(true));
 }
 
-/* 選択行の後ろに挿入 */
-function insertAfterSelected() {
+/* 選択行の後ろに挿入し、挿入行のx列を編集状態にする */
+function insertAfterSelected(initialValues = null) {
   if (selectedRow === null) {
     setStatus("先に行番号をクリックして、行を選択してください。");
     return;
   }
 
-  const value = prompt(
-    "挿入する値を入力してください。\n" +
-    "x列とy列はタブ、またはカンマで区切ります。\n" +
-    "例：12.3,45.6\n" +
-    "空欄なら x列・y列とも空の行を挿入します。"
-  );
+  let x = "";
+  let y = "";
 
-  if (value === null) return;
+  if (initialValues) {
+    x = initialValues.x ?? "";
+    y = initialValues.y ?? "";
+  } else {
+    const value = prompt(
+      "挿入する値を入力してください。\n" +
+      "x列とy列はタブ、またはカンマで区切ります。\n" +
+      "例：12.3,45.6\n" +
+      "空欄なら x列・y列とも空の行を挿入します。"
+    );
 
-  let x = "", y = "";
+    if (value === null) return;
 
-  if (value.trim() !== "") {
-    const parts = value.includes("\t")
-      ? value.split("\t")
-      : value.split(",");
-    x = (parts[0] ?? "").trim();
-    y = (parts[1] ?? "").trim();
+    if (value.trim() !== "") {
+      const parts = value.includes("\t")
+        ? value.split("\t")
+        : value.split(",");
+      x = (parts[0] ?? "").trim();
+      y = (parts[1] ?? "").trim();
+    }
   }
 
   snapshot();
+
   const insertAt = selectedRow + 1;
   rows.splice(insertAt, 0, {x, y});
+
   selectedRow = insertAt;
   selectedCell = {row: insertAt, col: "x"};
+
   render();
   setStatus(`${insertAt + 1} 行目に挿入しました。`);
+
+  const cell = document.querySelector(
+    `td[data-row="${insertAt}"][data-col="x"]`
+  );
+
+  if (cell) editCell(cell, insertAt, "x");
 }
 
 function appendRow() {
@@ -611,6 +643,12 @@ function appendRow() {
   selectedRow = rows.length - 1;
   selectedCell = {row: selectedRow, col: "x"};
   render();
+
+  const cell = document.querySelector(
+    `td[data-row="${selectedRow}"][data-col="x"]`
+  );
+  if (cell) editCell(cell, selectedRow, "x");
+
   setStatus("最後に行を追加しました。");
 }
 
@@ -664,6 +702,12 @@ function rowMenu(index) {
     selectedRow = at;
     selectedCell = {row: at, col: "x"};
     render();
+
+    const cell = document.querySelector(
+      `td[data-row="${at}"][data-col="x"]`
+    );
+    if (cell) editCell(cell, at, "x");
+
     setStatus(`${at + 1} 行目に挿入しました。`);
 
   } else if (action === "3") {
@@ -775,6 +819,7 @@ $("searchColumn").addEventListener("change", () => updateSearch(true));
 function updateSearch(jumpToFirst = true) {
   const query = $("searchInput").value;
   const column = $("searchColumn").value;
+
   matches = [];
   matchIndex = -1;
 
@@ -853,7 +898,6 @@ document.addEventListener("keydown", event => {
   const tag = document.activeElement?.tagName;
   if (["INPUT", "TEXTAREA", "SELECT"].includes(tag)) return;
 
-  /* Enter で選択行の後ろに挿入 */
   if (event.key === "Enter") {
     if (selectedRow !== null) {
       event.preventDefault();
@@ -862,7 +906,6 @@ document.addEventListener("keydown", event => {
     return;
   }
 
-  /* 選択行の削除 */
   if (event.key === "Delete" || event.key === "Backspace") {
     if (selectedRow !== null) {
       event.preventDefault();
