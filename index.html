@@ -3,547 +3,453 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Desmos 表編集ツール</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Desmos 表データ編集ツール</title>
 <style>
-* { box-sizing: border-box; }
+  body {
+    font-family: sans-serif;
+    margin: 20px;
+    color: #222;
+  }
 
-body {
-  margin: 16px;
-  font-family: system-ui, sans-serif;
-  color: #222;
-  background: #f7f8fa;
-}
+  h1 {
+    font-size: 22px;
+  }
 
-h2 { margin: 0 0 12px; font-size: 22px; }
-button, input, select, textarea { font: inherit; }
+  textarea {
+    width: 100%;
+    height: 110px;
+    box-sizing: border-box;
+    font-family: monospace;
+    font-size: 14px;
+    margin-bottom: 10px;
+  }
 
-button {
-  padding: 7px 12px;
-  border: 1px solid #c7cbd1;
-  border-radius: 6px;
-  background: white;
-  cursor: pointer;
-}
-button:hover { background: #edf2f7; }
-button:disabled { opacity: .4; cursor: default; }
+  button, select, input {
+    font-size: 14px;
+    padding: 5px;
+  }
 
-.toolbar, .bottom-controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-  margin: 12px 0;
-}
+  button {
+    cursor: pointer;
+  }
 
-.searchbar {
-  position: sticky;
-  top: 0;
-  z-index: 5;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-  padding: 12px;
-  background: white;
-  border: 1px solid #d7dbe0;
-  border-radius: 8px;
-}
+  .toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    margin: 10px 0;
+  }
 
-#searchInput {
-  flex: 1;
-  min-width: 130px;
-  padding: 8px 10px;
-  border: 1px solid #aeb5bf;
-  border-radius: 6px;
-}
+  .searchbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    margin: 10px 0;
+  }
 
-#searchColumn {
-  padding: 8px;
-  border: 1px solid #aeb5bf;
-  border-radius: 6px;
-  background: white;
-}
+  #searchInput {
+    min-width: 180px;
+  }
 
-#searchCount {
-  min-width: 70px;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-}
+  #tableContainer {
+    overflow: auto;
+    max-height: 65vh;
+    border: 1px solid #ccc;
+  }
 
-#status {
-  margin: 10px 2px;
-  min-height: 1.5em;
-  font-size: 14px;
-  color: #515965;
-}
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    table-layout: fixed;
+  }
 
-details {
-  margin: 14px 0;
-  padding: 10px;
-  border: 1px solid #d7dbe0;
-  border-radius: 8px;
-  background: white;
-}
+  th, td {
+    border: 1px solid #ccc;
+    padding: 0;
+    height: 32px;
+    text-align: left;
+  }
 
-textarea {
-  width: 100%;
-  min-height: 140px;
-  margin-top: 8px;
-  padding: 10px;
-  font-family: Consolas, monospace;
-  font-size: 13px;
-}
+  th {
+    background: #f2f2f2;
+    text-align: center;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
 
-.table-wrap {
-  width: 100%;
-  max-height: 65vh;
-  overflow: auto;
-  border: 1px solid #cbd0d7;
-  border-radius: 8px;
-  background: white;
-}
+  th:first-child,
+  td.rowNumber {
+    width: 55px;
+  }
 
-table {
-  width: 100%;
-  table-layout: fixed;
-  border-collapse: separate;
-  border-spacing: 0;
-}
+  th:not(:first-child) {
+    width: calc((100% - 55px) / 2);
+  }
 
-col.row-col { width: 60px; }
-col.data-col { width: calc((100% - 60px) / 2); }
+  td.rowNumber {
+    text-align: center;
+    background: #f7f7f7;
+    cursor: grab;
+    user-select: none;
+  }
 
-th, td {
-  height: 38px;
-  padding: 0;
-  border-right: 1px solid #e0e3e7;
-  border-bottom: 1px solid #e0e3e7;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
+  td.rowNumber:active {
+    cursor: grabbing;
+  }
 
-th {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  background: #edf0f4;
-  text-align: center;
-  font-weight: 600;
-}
+  tr.selected td {
+    background-color: #e7f2ff;
+  }
 
-th:first-child, .row-number {
-  width: 60px;
-  text-align: center;
-  background: #f3f4f6;
-  color: #606975;
-}
+  tr.selected td.rowNumber {
+    background-color: #cfe5ff;
+  }
 
-.row-number {
-  cursor: grab;
-  user-select: none;
-}
-.row-number:active { cursor: grabbing; }
+  td.found {
+    background-color: #fff1a8 !important;
+  }
 
-tr.row-selected > .row-number {
-  background: #b9d6ff;
-  color: #173f79;
-  font-weight: bold;
-  box-shadow: inset 0 0 0 2px #477fcb;
-}
+  td.currentMatch {
+    outline: 2px solid #e69500;
+    outline-offset: -2px;
+  }
 
-tr.row-selected > td.data-cell {
-  background-color: #edf5ff;
-}
+  td.cell {
+    cursor: text;
+    padding: 0 6px;
+    overflow-wrap: anywhere;
+  }
 
-td.data-cell { cursor: text; }
+  td.cell input {
+    width: 100%;
+    height: 32px;
+    border: 2px solid #2878d0;
+    box-sizing: border-box;
+    padding: 3px 5px;
+    font: inherit;
+    outline: none;
+  }
 
-td.data-cell .cell-text {
-  display: block;
-  overflow: hidden;
-  padding: 8px;
-  text-overflow: ellipsis;
-}
+  tr.dragOver td {
+    border-top: 3px solid #2878d0;
+  }
 
-td.data-cell:hover { background: #f3f7fc; }
-
-td.data-cell.selected {
-  outline: 2px solid #477fcb;
-  outline-offset: -2px;
-}
-
-td.data-cell.match { background: #fff0a8; }
-
-td.data-cell.current-match {
-  background: #ffbd57 !important;
-  outline: 3px solid #df8613;
-  outline-offset: -3px;
-}
-
-.cell-editor {
-  display: block;
-  width: 100%;
-  min-width: 0;
-  max-width: 100%;
-  height: 36px;
-  padding: 6px 8px;
-  border: 2px solid #477fcb;
-  border-radius: 0;
-  outline: none;
-  background: white;
-}
-
-tr.dragging { opacity: .4; }
-tr.drop-target { outline: 2px dashed #477fcb; }
-
-.hint {
-  font-size: 13px;
-  color: #656d78;
-  line-height: 1.6;
-}
-
-@media (max-width: 600px) {
-  body { margin: 8px; }
-  .searchbar { gap: 6px; }
-  #searchInput { flex-basis: 100%; }
-}
+  #status {
+    margin: 8px 0;
+    color: #555;
+    font-size: 13px;
+  }
 </style>
 </head>
 <body>
 
-<h2>Desmos 表編集ツール</h2>
+<h1>Desmos 表データ編集ツール</h1>
+
+<label for="sourceData"><strong>データ入力欄</strong></label>
+<textarea id="sourceData" placeholder="例：
+x_1 = [1, 2, 3]
+y_1 = [4, 5, 6]"></textarea>
 
 <div class="toolbar">
-  <button id="undoBtn" onclick="undo()">↶ 元に戻す</button>
-  <button id="redoBtn" onclick="redo()">↷ やり直す</button>
-  <button onclick="copyTable()">表をコピー</button>
-  <button onclick="clearTable()">表をクリア</button>
-  <button onclick="insertAfterSelected({x:'', y:''})">選択行の後ろに挿入</button>
+  <button id="loadButton">データを読み込む</button>
+  <button id="exportButton">データを出力欄に反映</button>
+  <button id="addRowButton">行を追加</button>
+  <button id="deleteRowButton">選択行を削除</button>
+  <button id="copyButton">表をコピー</button>
+  <button id="undoButton">元に戻す</button>
+  <button id="redoButton">やり直す</button>
 </div>
 
-<div id="status">Desmos の表データを読み込んでください。</div>
-
-<details open>
-  <summary>元データの読み込み</summary>
-  <p class="hint">Desmos の表データを貼り付けて「読み込み」を押してください。</p>
-  <textarea id="sourceInput" placeholder="Desmos の表データをここに貼り付け"></textarea>
-  <div class="toolbar">
-    <button onclick="loadSource()">読み込み</button>
-  </div>
-</details>
-
 <div class="searchbar">
-  <input id="searchInput" placeholder="検索する文字を入力…" autocomplete="off">
-  <select id="searchColumn" aria-label="検索する列">
+  <label for="searchColumn">検索列：</label>
+  <select id="searchColumn">
     <option value="both">両方</option>
     <option value="x">x列</option>
     <option value="y">y列</option>
   </select>
-  <button onclick="moveMatch(-1)" title="前の一致箇所">↑</button>
-  <button onclick="moveMatch(1)" title="次の一致箇所">↓</button>
-  <span id="searchCount">0 / 0</span>
-  <button onclick="replaceValues()">値を置換</button>
+
+  <input id="searchInput" type="text" placeholder="検索文字列">
+  <button id="searchButton">検索</button>
+  <button id="prevMatchButton">前へ</button>
+  <button id="nextMatchButton">次へ</button>
+  <span id="matchCount">0 / 0</span>
+
+  <button id="replaceButton">一致部分を置換</button>
 </div>
 
-<div class="table-wrap">
-  <table id="dataTable">
-    <colgroup>
-      <col class="row-col">
-      <col class="data-col">
-      <col class="data-col">
-    </colgroup>
+<div id="status">データを入力するか、読み込んでください。</div>
+
+<div id="tableContainer">
+  <table>
     <thead>
-      <tr><th>行</th><th>x₁</th><th>y₁</th></tr>
+      <tr>
+        <th>行</th>
+        <th>x</th>
+        <th>y</th>
+      </tr>
     </thead>
     <tbody id="tableBody"></tbody>
   </table>
 </div>
 
-<div class="bottom-controls">
-  <button onclick="appendRow()">＋ 最後に行を追加</button>
-  <button onclick="deleteSelectedRow()">選択行を削除</button>
-  <button onclick="copyTable()">表をコピー</button>
-</div>
-
-<p class="hint">
-  行番号をクリックすると行を選択できます。<br>
-  セルをクリックすると編集できます。<br>
-  Enter：値を確定し、選択行の直後に空白行を挿入してx列を編集します。<br>
-  入力中の欄が空白のときにBackspace：確認なしでその行を削除します。<br>
-  Tab：入力中のセルから次のセルへ移動します。<br>
-  空白のセルを選択してBackspace：その行を削除します。<br>
-  Delete：選択行を確認なしで削除します。<br>
-  行番号をドラッグすると行を並べ替えられます。右クリックメニューはありません。
-</p>
-
 <script>
+const sourceData = document.getElementById("sourceData");
+const tableBody = document.getElementById("tableBody");
+const status = document.getElementById("status");
+
+const searchInput = document.getElementById("searchInput");
+const searchColumn = document.getElementById("searchColumn");
+const matchCount = document.getElementById("matchCount");
+
 let rows = [];
-let selectedCell = null;
 let selectedRow = null;
-let matches = [];
-let matchIndex = -1;
-let history = [];
-let future = [];
-let dragIndex = null;
+let selectedCell = null;
 let editing = false;
 
-const $ = id => document.getElementById(id);
+let matches = [];
+let matchIndex = -1;
+
+let undoStack = [];
+let redoStack = [];
+const MAX_HISTORY = 100;
+
+let dragSourceIndex = null;
 
 function setStatus(message) {
-  $("status").textContent = message;
+  status.textContent = message;
 }
 
 function snapshot() {
-  history.push(JSON.stringify(rows));
-  if (history.length > 100) history.shift();
-  future = [];
+  undoStack.push(JSON.stringify(rows));
+  if (undoStack.length > MAX_HISTORY) {
+    undoStack.shift();
+  }
+  redoStack = [];
   updateHistoryButtons();
 }
 
 function updateHistoryButtons() {
-  $("undoBtn").disabled = history.length === 0;
-  $("redoBtn").disabled = future.length === 0;
+  document.getElementById("undoButton").disabled = undoStack.length === 0;
+  document.getElementById("redoButton").disabled = redoStack.length === 0;
 }
 
 function undo() {
-  if (!history.length) return;
-  future.push(JSON.stringify(rows));
-  rows = JSON.parse(history.pop());
-  selectedCell = null;
+  if (!undoStack.length) return;
+
+  redoStack.push(JSON.stringify(rows));
+  rows = JSON.parse(undoStack.pop());
   selectedRow = null;
-  editing = false;
+  selectedCell = null;
   render();
+  updateHistoryButtons();
   setStatus("操作を元に戻しました。");
 }
 
 function redo() {
-  if (!future.length) return;
-  history.push(JSON.stringify(rows));
-  rows = JSON.parse(future.pop());
-  selectedCell = null;
+  if (!redoStack.length) return;
+
+  undoStack.push(JSON.stringify(rows));
+  rows = JSON.parse(redoStack.pop());
   selectedRow = null;
-  editing = false;
+  selectedCell = null;
   render();
+  updateHistoryButtons();
   setStatus("操作をやり直しました。");
 }
 
-function parseArray(source, name) {
-  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function parseArray(text, variable) {
+  const escaped = variable.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const regex = new RegExp(
-    escaped + "\\s*=\\s*\\[([\\s\\S]*?)\\]", "m"
+    "(?:^|\\n)\\s*" + escaped + "\\s*=\\s*\\[([\\s\\S]*?)\\]",
+    "m"
   );
-  const found = source.match(regex);
-  if (!found) return null;
-  const content = found[1].trim();
-  if (!content) return [];
-  return content.split(",").map(v => v.trim());
+
+  const match = text.match(regex);
+  if (!match) return null;
+
+  const content = match[1].trim();
+  if (content === "") return [];
+
+  return content.split(",").map(value => value.trim());
 }
 
-function loadSource() {
-  const source = $("sourceInput").value;
-  const xs = parseArray(source, "x_1");
-  const ys = parseArray(source, "y_1");
+function loadData() {
+  const text = sourceData.value;
+  const xValues = parseArray(text, "x_1");
+  const yValues = parseArray(text, "y_1");
 
-  if (xs === null || ys === null) {
+  if (xValues === null && yValues === null) {
     setStatus("x_1 または y_1 の配列が見つかりません。");
     return;
   }
 
   snapshot();
-  const length = Math.max(xs.length, ys.length);
-  rows = Array.from({length}, (_, i) => ({
-    x: xs[i] ?? "",
-    y: ys[i] ?? ""
-  }));
 
+  const xs = xValues || [];
+  const ys = yValues || [];
+  const length = Math.max(xs.length, ys.length);
+
+  rows = [];
+
+  for (let i = 0; i < length; i++) {
+    rows.push({
+      x: xs[i] ?? "",
+      y: ys[i] ?? ""
+    });
+  }
+
+  selectedRow = rows.length ? 0 : null;
   selectedCell = null;
-  selectedRow = null;
-  editing = false;
   render();
   setStatus(`${rows.length} 行を読み込みました。`);
 }
 
+function exportData() {
+  const xs = rows.map(row => row.x).join(", ");
+  const ys = rows.map(row => row.y).join(", ");
+
+  sourceData.value = `x_1 = [${xs}]\ny_1 = [${ys}]`;
+  setStatus("データを出力欄に反映しました。");
+}
+
 function render() {
-  const tbody = $("tableBody");
-  tbody.replaceChildren();
+  tableBody.innerHTML = "";
 
   rows.forEach((row, index) => {
     const tr = document.createElement("tr");
     tr.dataset.index = index;
 
-    if (selectedRow === index) tr.classList.add("row-selected");
+    if (index === selectedRow) {
+      tr.classList.add("selected");
+    }
 
     const numberCell = document.createElement("td");
-    numberCell.className = "row-number";
+    numberCell.className = "rowNumber";
     numberCell.textContent = index + 1;
-    numberCell.title = "クリックで選択、ドラッグで移動";
+    numberCell.draggable = true;
+    numberCell.title = "ドラッグして行を並べ替え";
 
     numberCell.addEventListener("click", () => {
       selectedRow = index;
       selectedCell = null;
-      editing = false;
       render();
-      setStatus(`${index + 1} 行目を選択しました。`);
     });
 
-    // 行番号だけをドラッグ可能にする
-    numberCell.draggable = true;
-
     numberCell.addEventListener("dragstart", event => {
-      dragIndex = index;
-      selectedRow = index;
-      tr.classList.add("dragging");
+      dragSourceIndex = index;
       event.dataTransfer.effectAllowed = "move";
       event.dataTransfer.setData("text/plain", String(index));
     });
 
-    numberCell.addEventListener("dragend", () => {
-      dragIndex = null;
-      document.querySelectorAll("tr").forEach(r =>
-        r.classList.remove("dragging", "drop-target")
-      );
-    });
-
     tr.addEventListener("dragover", event => {
-      if (dragIndex === null || dragIndex === index) return;
       event.preventDefault();
-      tr.classList.add("drop-target");
+      tr.classList.add("dragOver");
+      event.dataTransfer.dropEffect = "move";
     });
 
     tr.addEventListener("dragleave", () => {
-      tr.classList.remove("drop-target");
+      tr.classList.remove("dragOver");
     });
 
     tr.addEventListener("drop", event => {
       event.preventDefault();
-      tr.classList.remove("drop-target");
+      tr.classList.remove("dragOver");
 
-      if (dragIndex === null || dragIndex === index) return;
+      const from = dragSourceIndex;
+      const to = index;
+
+      if (from === null || from === to || from < 0 || from >= rows.length) {
+        return;
+      }
 
       snapshot();
-      const moved = rows.splice(dragIndex, 1)[0];
-      const targetIndex = dragIndex < index ? index - 1 : index;
-      rows.splice(targetIndex, 0, moved);
 
-      selectedRow = targetIndex;
+      const moved = rows.splice(from, 1)[0];
+      const destination = from < to ? to - 1 : to;
+      rows.splice(destination, 0, moved);
+
+      selectedRow = destination;
       selectedCell = null;
-      editing = false;
-      dragIndex = null;
-
+      dragSourceIndex = null;
       render();
       setStatus("行を並べ替えました。");
     });
 
     tr.appendChild(numberCell);
 
-    ["x", "y"].forEach(key => {
+    ["x", "y"].forEach(column => {
       const td = document.createElement("td");
-      td.className = "data-cell";
+      td.className = "cell";
       td.dataset.row = index;
-      td.dataset.col = key;
-
-      if (selectedCell?.row === index && selectedCell?.col === key) {
-        td.classList.add("selected");
-      }
-
-      const span = document.createElement("span");
-      span.className = "cell-text";
-      span.textContent = row[key];
-      td.appendChild(span);
+      td.dataset.column = column;
+      td.textContent = row[column];
 
       td.addEventListener("click", () => {
         selectedRow = index;
-        selectedCell = {row: index, col: key};
+        selectedCell = column;
         render();
-
-        const target = document.querySelector(
-          `td[data-row="${index}"][data-col="${key}"]`
-        );
-        if (target) editCell(target, index, key);
+        editCell(index, column);
       });
 
       tr.appendChild(td);
     });
 
-    tbody.appendChild(tr);
+    tableBody.appendChild(tr);
   });
 
   updateSearch(false);
   updateHistoryButtons();
 }
 
-function editCell(td, rowIndex, key) {
-  if (td.querySelector("input")) return;
+function editCell(rowIndex, column) {
+  const tr = tableBody.querySelector(`tr[data-index="${rowIndex}"]`);
+  if (!tr) return;
 
-  editing = true;
-  selectedRow = rowIndex;
-  selectedCell = {row: rowIndex, col: key};
-
-  const oldValue = rows[rowIndex][key];
-  td.classList.add("selected");
-  td.replaceChildren();
+  const td = tr.querySelector(`td[data-column="${column}"]`);
+  if (!td) return;
 
   const input = document.createElement("input");
   input.type = "text";
-  input.className = "cell-editor";
-  input.value = oldValue;
+  input.value = rows[rowIndex][column];
+
+  td.textContent = "";
   td.appendChild(input);
-  input.focus();
-  input.select();
+
+  editing = true;
+  selectedRow = rowIndex;
+  selectedCell = column;
 
   let finished = false;
 
-  function finish(save, move = null) {
+  input.focus();
+  input.select();
+
+  function finish(save = true) {
     if (finished) return;
     finished = true;
-    editing = false;
 
-    const newValue = input.value;
+    if (save && rows[rowIndex]) {
+      const newValue = input.value;
 
-    if (save && newValue !== oldValue) {
-      snapshot();
-      rows[rowIndex][key] = newValue;
-    }
-
-    selectedRow = rowIndex;
-    selectedCell = {row: rowIndex, col: key};
-    render();
-
-    if (save && newValue !== oldValue) {
-      setStatus("セルを編集しました。");
-    }
-
-    if (move) {
-      let nextRow = rowIndex;
-      let nextCol = key;
-
-      if (move === "left") nextCol = "x";
-      if (move === "right") nextCol = "y";
-      if (move === "up") nextRow--;
-      if (move === "down") nextRow++;
-
-      if (nextRow >= 0 && nextRow < rows.length) {
-        selectedRow = nextRow;
-        selectedCell = {row: nextRow, col: nextCol};
-        render();
-
-        const newCell = document.querySelector(
-          `td[data-row="${nextRow}"][data-col="${nextCol}"]`
-        );
-
-        if (newCell) editCell(newCell, nextRow, nextCol);
+      if (rows[rowIndex][column] !== newValue) {
+        snapshot();
+        rows[rowIndex][column] = newValue;
       }
     }
+
+    editing = false;
+    render();
   }
 
   input.addEventListener("keydown", event => {
-    // 空欄でBackspace：確認なしで行削除
-    if (
-      event.key === "Backspace" &&
-      input.value === "" &&
-      !event.isComposing
-    ) {
+    if (event.key === "Backspace" &&
+        input.value === "" &&
+        !event.isComposing) {
+
       event.preventDefault();
       event.stopPropagation();
 
@@ -552,207 +458,255 @@ function editCell(td, rowIndex, key) {
       editing = false;
 
       const deletedIndex = rowIndex;
+
       snapshot();
       rows.splice(deletedIndex, 1);
 
-      selectedCell = null;
-      selectedRow = rows.length
-        ? Math.min(deletedIndex, rows.length - 1)
-        : null;
+      // 削除した行のひとつ前を選択する。
+      // 先頭行を削除した場合は、新しい先頭行を選択する。
+      if (rows.length === 0) {
+        selectedRow = null;
+        selectedCell = null;
+        render();
+        setStatus("行を削除しました。");
+        return;
+      }
+
+      selectedRow = deletedIndex > 0
+        ? deletedIndex - 1
+        : 0;
+
+      selectedCell = "x";
 
       render();
-      setStatus(`${deletedIndex + 1} 行目を削除しました。`);
+      setStatus("行を削除しました。");
+
+      // 再描画後、ひとつ前の行のx列を入力モードにする。
+      requestAnimationFrame(() => {
+        if (selectedRow !== null && rows[selectedRow]) {
+          editCell(selectedRow, "x");
+        }
+      });
+
       return;
     }
 
     if (event.key === "Enter") {
       event.preventDefault();
+      event.stopPropagation();
 
-      const newValue = input.value;
+      const currentValue = input.value;
 
-      if (newValue !== oldValue) {
+      if (!finished && rows[rowIndex] &&
+          rows[rowIndex][column] !== currentValue) {
         snapshot();
-        rows[rowIndex][key] = newValue;
+        rows[rowIndex][column] = currentValue;
       }
 
+      if (finished) return;
       finished = true;
       editing = false;
-      selectedRow = rowIndex;
-      selectedCell = {row: rowIndex, col: key};
 
-      insertAfterSelected({x: "", y: ""});
-      return;
+      selectedRow = rowIndex;
+      selectedCell = column;
+
+      insertAfterSelected();
     }
 
     if (event.key === "Escape") {
       event.preventDefault();
+      event.stopPropagation();
       finish(false);
-      return;
     }
 
     if (event.key === "Tab") {
       event.preventDefault();
-      finish(true, key === "x" ? "right" : "down");
-      return;
-    }
+      event.stopPropagation();
 
-    if (event.key === "ArrowUp" || event.key === "ArrowDown") {
-      event.preventDefault();
-      finish(true, event.key === "ArrowUp" ? "up" : "down");
-      return;
-    }
+      const nextRow = column === "x" ? rowIndex : rowIndex + 1;
+      const nextColumn = column === "x" ? "y" : "x";
 
-    if (
-      event.key === "ArrowLeft" &&
-      input.selectionStart === 0 &&
-      input.selectionEnd === 0
-    ) {
-      event.preventDefault();
-      finish(true, "left");
-      return;
-    }
+      finish(true);
 
-    if (
-      event.key === "ArrowRight" &&
-      input.selectionStart === input.value.length &&
-      input.selectionEnd === input.value.length
-    ) {
-      event.preventDefault();
-      finish(true, "right");
+      if (nextRow < rows.length) {
+        selectedRow = nextRow;
+        selectedCell = nextColumn;
+        render();
+        editCell(nextRow, nextColumn);
+      }
     }
   });
 
-  input.addEventListener("blur", () => finish(true));
-}
-
-function insertAfterSelected(initialValues = {x: "", y: ""}) {
-  if (selectedRow === null || !rows[selectedRow]) {
-    setStatus("先に行番号またはセルを選択してください。");
-    return;
-  }
-
-  const insertAt = selectedRow + 1;
-
-  snapshot();
-  rows.splice(insertAt, 0, {
-    x: initialValues?.x ?? "",
-    y: initialValues?.y ?? ""
+  input.addEventListener("blur", () => {
+    finish(true);
   });
-
-  selectedRow = insertAt;
-  selectedCell = {row: insertAt, col: "x"};
-  editing = false;
-
-  render();
-  setStatus(`${insertAt + 1} 行目に挿入しました。`);
-
-  const cell = document.querySelector(
-    `td[data-row="${insertAt}"][data-col="x"]`
-  );
-
-  if (cell) editCell(cell, insertAt, "x");
 }
 
-function appendRow() {
-  snapshot();
-  rows.push({x: "", y: ""});
+function insertAfterSelected() {
+  if (selectedRow === null) return;
 
-  selectedRow = rows.length - 1;
-  selectedCell = {row: selectedRow, col: "x"};
-  editing = false;
+  const insertIndex = selectedRow + 1;
+
+  snapshot();
+  rows.splice(insertIndex, 0, { x: "", y: "" });
+
+  selectedRow = insertIndex;
+  selectedCell = "x";
 
   render();
+  editCell(insertIndex, "x");
+}
 
-  const cell = document.querySelector(
-    `td[data-row="${selectedRow}"][data-col="x"]`
-  );
+function addRow() {
+  snapshot();
 
-  if (cell) editCell(cell, selectedRow, "x");
-  setStatus("最後に行を追加しました。");
+  const insertIndex = selectedRow === null
+    ? rows.length
+    : selectedRow + 1;
+
+  rows.splice(insertIndex, 0, { x: "", y: "" });
+  selectedRow = insertIndex;
+  selectedCell = "x";
+
+  render();
+  editCell(insertIndex, "x");
 }
 
 function deleteSelectedRow() {
-  if (selectedRow === null || !rows[selectedRow]) {
-    setStatus("先に行番号をクリックして、行を選択してください。");
+  if (selectedRow === null || !rows[selectedRow]) return;
+
+  const deletedIndex = selectedRow;
+
+  snapshot();
+  rows.splice(deletedIndex, 1);
+
+  if (rows.length === 0) {
+    selectedRow = null;
+    selectedCell = null;
+    render();
+    setStatus("行を削除しました。");
     return;
   }
 
-  const index = selectedRow;
+  selectedRow = deletedIndex > 0
+    ? deletedIndex - 1
+    : 0;
 
-  snapshot();
-  rows.splice(index, 1);
-
-  selectedRow = rows.length
-    ? Math.min(index, rows.length - 1)
-    : null;
-
-  selectedCell = null;
-  editing = false;
+  selectedCell = "x";
   render();
-  setStatus(`${index + 1} 行目を削除しました。`);
+
+  requestAnimationFrame(() => {
+    if (selectedRow !== null && rows[selectedRow]) {
+      editCell(selectedRow, "x");
+    }
+  });
+
+  setStatus("行を削除しました。");
 }
 
-function clearTable() {
-  if (!confirm("表のデータをすべて消去しますか？")) return;
+function updateSearch(resetIndex = true) {
+  const query = searchInput.value;
+  const columnChoice = searchColumn.value;
 
-  snapshot();
-  rows = [];
-  selectedCell = null;
-  selectedRow = null;
-  editing = false;
-  render();
-  setStatus("表をクリアしました。");
-}
+  matches = [];
 
-function copyTable() {
-  const text = rows.map(row => `${row.x}\t${row.y}`).join("\n");
+  if (query !== "") {
+    rows.forEach((row, rowIndex) => {
+      const columns = columnChoice === "both"
+        ? ["x", "y"]
+        : [columnChoice];
 
-  if (navigator.clipboard && window.isSecureContext) {
-    navigator.clipboard.writeText(text)
-      .then(() => setStatus("表をコピーしました。"))
-      .catch(() => copyFallback(text));
-  } else {
-    copyFallback(text);
-  }
-}
-
-function copyFallback(text) {
-  const area = document.createElement("textarea");
-  area.value = text;
-  document.body.appendChild(area);
-  area.select();
-
-  try {
-    document.execCommand("copy");
-    setStatus("表をコピーしました。");
-  } catch {
-    setStatus("コピーできませんでした。");
+      columns.forEach(column => {
+        if (String(row[column]).includes(query)) {
+          matches.push({ row: rowIndex, column });
+        }
+      });
+    });
   }
 
-  area.remove();
+  if (resetIndex) {
+    matchIndex = matches.length ? 0 : -1;
+  } else if (matchIndex >= matches.length) {
+    matchIndex = matches.length - 1;
+  }
+
+  renderSearchHighlights();
+}
+
+function renderSearchHighlights() {
+  tableBody.querySelectorAll("td.cell").forEach(td => {
+    td.classList.remove("found", "currentMatch");
+  });
+
+  matches.forEach((match, index) => {
+    const td = tableBody.querySelector(
+      `td[data-row="${match.row}"][data-column="${match.column}"]`
+    );
+
+    if (td) {
+      td.classList.add("found");
+
+      if (index === matchIndex) {
+        td.classList.add("currentMatch");
+      }
+    }
+  });
+
+  matchCount.textContent = matches.length
+    ? `${matchIndex + 1} / ${matches.length}`
+    : "0 / 0";
+}
+
+function moveMatch(direction) {
+  if (!matches.length) {
+    updateSearch(true);
+    return;
+  }
+
+  matchIndex = (matchIndex + direction + matches.length) % matches.length;
+
+  const match = matches[matchIndex];
+  selectedRow = match.row;
+  selectedCell = match.column;
+
+  render();
+  renderSearchHighlights();
+
+  const td = tableBody.querySelector(
+    `td[data-row="${match.row}"][data-column="${match.column}"]`
+  );
+
+  if (td) {
+    td.scrollIntoView({ block: "nearest" });
+  }
 }
 
 function replaceValues() {
-  const query = $("searchInput").value;
+  const query = searchInput.value;
 
   if (!query) {
-    setStatus("検索欄に置換対象の文字を入力してください。");
+    setStatus("置換する文字列を入力してください。");
     return;
   }
 
-  const replacement = prompt(`「${query}」を何に置き換えますか？`, "");
+  const replacement = prompt("置換後の文字列を入力してください：");
   if (replacement === null) return;
 
-  const column = $("searchColumn").value;
-  const keys = column === "both" ? ["x", "y"] : [column];
+  const columnChoice = searchColumn.value;
   let count = 0;
 
-  const changed = rows.map(row => {
-    const copy = {...row};
+  const updatedRows = rows.map(row => {
+    const copy = { ...row };
 
-    keys.forEach(key => {
-      if (String(copy[key]).includes(query)) {
-        copy[key] = String(copy[key]).split(query).join(replacement);
+    const columns = columnChoice === "both"
+      ? ["x", "y"]
+      : [columnChoice];
+
+    columns.forEach(column => {
+      const value = String(copy[column]);
+
+      if (value.includes(query)) {
+        copy[column] = value.split(query).join(replacement);
         count++;
       }
     });
@@ -760,175 +714,113 @@ function replaceValues() {
     return copy;
   });
 
-  if (!count) {
-    setStatus("置換対象がありません。");
-    return;
+  if (count > 0) {
+    snapshot();
+    rows = updatedRows;
+    render();
   }
 
-  snapshot();
-  rows = changed;
-  render();
-  setStatus(`${count} 個のセルを置換しました。`);
+  setStatus(`${count} か所を置換しました。`);
 }
 
-/* 検索 */
-$("searchInput").addEventListener("input", () => updateSearch(true));
-$("searchColumn").addEventListener("change", () => updateSearch(true));
+function copyTable() {
+  const text = rows
+    .map(row => `${row.x}\t${row.y}`)
+    .join("\n");
 
-function updateSearch(jumpToFirst = true) {
-  const query = $("searchInput").value;
-  const column = $("searchColumn").value;
-
-  matches = [];
-  matchIndex = -1;
-
-  if (query !== "") {
-    rows.forEach((row, rowIndex) => {
-      const keys = column === "both" ? ["x", "y"] : [column];
-
-      keys.forEach(key => {
-        if (String(row[key]).includes(query)) {
-          matches.push({row: rowIndex, col: key});
-        }
-      });
+  navigator.clipboard.writeText(text)
+    .then(() => setStatus("表をコピーしました。"))
+    .catch(() => {
+      setStatus("コピーできませんでした。ブラウザの権限を確認してください。");
     });
-  }
-
-  if (matches.length) {
-    matchIndex = 0;
-    if (jumpToFirst) scrollToMatch();
-  }
-
-  highlightMatches();
 }
 
-function highlightMatches() {
-  document.querySelectorAll("td.data-cell").forEach(td => {
-    td.classList.remove("match", "current-match");
-  });
+document.getElementById("loadButton").addEventListener("click", loadData);
+document.getElementById("exportButton").addEventListener("click", exportData);
+document.getElementById("addRowButton").addEventListener("click", addRow);
+document.getElementById("deleteRowButton").addEventListener("click", deleteSelectedRow);
+document.getElementById("copyButton").addEventListener("click", copyTable);
+document.getElementById("undoButton").addEventListener("click", undo);
+document.getElementById("redoButton").addEventListener("click", redo);
 
-  matches.forEach((match, index) => {
-    const td = document.querySelector(
-      `td[data-row="${match.row}"][data-col="${match.col}"]`
-    );
+document.getElementById("searchButton").addEventListener("click", () => {
+  updateSearch(true);
+});
 
-    if (!td) return;
-    td.classList.add("match");
-    if (index === matchIndex) td.classList.add("current-match");
-  });
+document.getElementById("prevMatchButton").addEventListener("click", () => {
+  moveMatch(-1);
+});
 
-  $("searchCount").textContent = matches.length
-    ? `${matchIndex + 1} / ${matches.length}`
-    : "0 / 0";
-}
+document.getElementById("nextMatchButton").addEventListener("click", () => {
+  moveMatch(1);
+});
 
-function scrollToMatch() {
-  if (matchIndex < 0 || !matches[matchIndex]) return;
+document.getElementById("replaceButton").addEventListener("click", replaceValues);
 
-  const match = matches[matchIndex];
-  const td = document.querySelector(
-    `td[data-row="${match.row}"][data-col="${match.col}"]`
-  );
+searchInput.addEventListener("input", () => updateSearch(true));
+searchColumn.addEventListener("change", () => updateSearch(true));
 
-  if (td) {
-    td.scrollIntoView({
-      behavior: "smooth",
-      block: "center",
-      inline: "nearest"
-    });
-    highlightMatches();
-  }
-}
-
-function moveMatch(direction) {
-  if (!matches.length) {
-    setStatus("一致する箇所がありません。");
-    return;
-  }
-
-  matchIndex = (matchIndex + direction + matches.length) % matches.length;
-  scrollToMatch();
-}
-
-/* キーボード操作 */
 document.addEventListener("keydown", event => {
   if (editing) return;
 
-  const tag = document.activeElement?.tagName;
-  if (["INPUT", "TEXTAREA", "SELECT"].includes(tag)) return;
-
-  if (event.key === "Backspace") {
-    if (selectedCell === null || selectedRow === null) return;
-
-    const row = rows[selectedCell.row];
-    if (!row) return;
-
-    if (String(row[selectedCell.col] ?? "").trim() === "") {
-      event.preventDefault();
-
-      const index = selectedCell.row;
-      snapshot();
-      rows.splice(index, 1);
-
-      selectedRow = rows.length
-        ? Math.min(index, rows.length - 1)
-        : null;
-
-      selectedCell = null;
-      render();
-      setStatus(`${index + 1} 行目を削除しました。`);
-    }
+  const target = event.target;
+  if (target === sourceData || target === searchInput ||
+      target.tagName === "INPUT" ||
+      target.tagName === "TEXTAREA" ||
+      target.tagName === "SELECT") {
     return;
   }
 
-  if (event.key === "Delete") {
-    if (selectedRow !== null) {
-      event.preventDefault();
-      deleteSelectedRow();
-    }
+  if (event.key === "Enter" && selectedRow !== null) {
+    event.preventDefault();
+    insertAfterSelected();
     return;
   }
 
-  if (event.key === "Enter") {
-    if (selectedRow !== null) {
-      event.preventDefault();
-      insertAfterSelected({x: "", y: ""});
-    }
+  if (event.key === "Backspace" && selectedRow !== null &&
+      selectedCell !== null &&
+      rows[selectedRow] &&
+      rows[selectedRow][selectedCell] === "") {
+    event.preventDefault();
+    deleteSelectedRow();
     return;
   }
 
-  if (!selectedCell || !rows.length) return;
+  if (event.key === "Delete" && selectedRow !== null) {
+    event.preventDefault();
+    deleteSelectedRow();
+    return;
+  }
 
-  let r = selectedCell.row;
-  let c = selectedCell.col;
+  if (event.key === "ArrowUp" && selectedRow !== null) {
+    event.preventDefault();
+    selectedRow = Math.max(0, selectedRow - 1);
+    render();
+    return;
+  }
 
-  if (event.key === "ArrowUp") r--;
-  else if (event.key === "ArrowDown") r++;
-  else if (event.key === "ArrowLeft") c = "x";
-  else if (event.key === "ArrowRight") c = "y";
-  else return;
+  if (event.key === "ArrowDown" && selectedRow !== null) {
+    event.preventDefault();
+    selectedRow = Math.min(rows.length - 1, selectedRow + 1);
+    render();
+    return;
+  }
 
-  event.preventDefault();
-  r = Math.max(0, Math.min(rows.length - 1, r));
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
+    event.preventDefault();
+    undo();
+    return;
+  }
 
-  selectedRow = r;
-  selectedCell = {row: r, col: c};
-  render();
-
-  const target = document.querySelector(
-    `td[data-row="${r}"][data-col="${c}"]`
-  );
-
-  if (target) {
-    target.scrollIntoView({
-      block: "nearest",
-      inline: "nearest"
-    });
+  if ((event.ctrlKey || event.metaKey) &&
+      event.key.toLowerCase() === "y") {
+    event.preventDefault();
+    redo();
   }
 });
 
-updateHistoryButtons();
 render();
 </script>
+
 </body>
 </html>
