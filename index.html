@@ -6,213 +6,211 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Desmos 表編集ツール</title>
 <style>
-  * { box-sizing: border-box; }
+* { box-sizing: border-box; }
 
-  body {
-    font-family: system-ui, sans-serif;
-    margin: 16px;
-    color: #222;
-    background: #f7f8fa;
-  }
+body {
+  margin: 16px;
+  font-family: system-ui, sans-serif;
+  color: #222;
+  background: #f7f8fa;
+}
 
-  h2 { margin: 0 0 12px; font-size: 22px; }
+h2 { margin: 0 0 12px; font-size: 22px; }
 
-  button, input, select, textarea {
-    font: inherit;
-  }
+button, input, select, textarea { font: inherit; }
 
-  button {
-    padding: 7px 12px;
-    border: 1px solid #c7cbd1;
-    border-radius: 6px;
-    background: white;
-    cursor: pointer;
-  }
+button {
+  padding: 7px 12px;
+  border: 1px solid #c7cbd1;
+  border-radius: 6px;
+  background: white;
+  cursor: pointer;
+}
 
-  button:hover { background: #edf2f7; }
-  button:disabled { opacity: .4; cursor: default; }
+button:hover { background: #edf2f7; }
+button:disabled { opacity: .4; cursor: default; }
 
-  .toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    align-items: center;
-    margin: 12px 0;
-  }
+.toolbar, .bottom-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 12px 0;
+}
 
-  .searchbar {
-    position: sticky;
-    top: 0;
-    z-index: 5;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    align-items: center;
-    padding: 12px;
-    background: #fff;
-    border: 1px solid #d7dbe0;
-    border-radius: 8px;
-    box-shadow: 0 2px 6px #0000000b;
-  }
+.searchbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 12px;
+  background: white;
+  border: 1px solid #d7dbe0;
+  border-radius: 8px;
+}
 
-  #searchInput {
-    flex: 1;
-    min-width: 130px;
-    padding: 8px 10px;
-    border: 1px solid #aeb5bf;
-    border-radius: 6px;
-  }
+#searchInput {
+  flex: 1;
+  min-width: 130px;
+  padding: 8px 10px;
+  border: 1px solid #aeb5bf;
+  border-radius: 6px;
+}
 
-  #searchColumn {
-    padding: 8px;
-    border: 1px solid #aeb5bf;
-    border-radius: 6px;
-    background: white;
-  }
+#searchColumn {
+  padding: 8px;
+  border: 1px solid #aeb5bf;
+  border-radius: 6px;
+  background: white;
+}
 
-  #searchCount {
-    min-width: 70px;
-    text-align: center;
-    font-variant-numeric: tabular-nums;
-    color: #454c56;
-  }
+#searchCount {
+  min-width: 70px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
 
-  #status {
-    margin: 10px 2px;
-    min-height: 1.5em;
-    font-size: 14px;
-    color: #515965;
-  }
+#status {
+  margin: 10px 2px;
+  min-height: 1.5em;
+  font-size: 14px;
+  color: #515965;
+}
 
-  details {
-    margin: 14px 0;
-    padding: 10px;
-    border: 1px solid #d7dbe0;
-    border-radius: 8px;
-    background: white;
-  }
+details {
+  margin: 14px 0;
+  padding: 10px;
+  border: 1px solid #d7dbe0;
+  border-radius: 8px;
+  background: white;
+}
 
-  textarea {
-    width: 100%;
-    min-height: 140px;
-    margin-top: 8px;
-    padding: 10px;
-    font-family: Consolas, monospace;
-    font-size: 13px;
-  }
+textarea {
+  width: 100%;
+  min-height: 140px;
+  margin-top: 8px;
+  padding: 10px;
+  font-family: Consolas, monospace;
+  font-size: 13px;
+}
 
-  .table-wrap {
-    width: 100%;
-    max-height: 65vh;
-    overflow: auto;
-    border: 1px solid #cbd0d7;
-    border-radius: 8px;
-    background: white;
-  }
+.table-wrap {
+  width: 100%;
+  max-height: 65vh;
+  overflow: auto;
+  border: 1px solid #cbd0d7;
+  border-radius: 8px;
+  background: white;
+}
 
-  table {
-    width: 100%;
-    table-layout: fixed;
-    border-collapse: separate;
-    border-spacing: 0;
-  }
+table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+}
 
-  col.row-col { width: 60px; }
-  col.data-col { width: calc((100% - 60px) / 2); }
+col.row-col { width: 60px; }
+col.data-col { width: calc((100% - 60px) / 2); }
 
-  th, td {
-    height: 38px;
-    padding: 0;
-    border-right: 1px solid #e0e3e7;
-    border-bottom: 1px solid #e0e3e7;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-  }
+th, td {
+  height: 38px;
+  padding: 0;
+  border-right: 1px solid #e0e3e7;
+  border-bottom: 1px solid #e0e3e7;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
 
-  th {
-    position: sticky;
-    top: 0;
-    z-index: 2;
-    background: #edf0f4;
-    text-align: center;
-    font-weight: 600;
-  }
+th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #edf0f4;
+  text-align: center;
+  font-weight: 600;
+}
 
-  th:first-child, .row-number {
-    width: 60px;
-    text-align: center;
-    background: #f3f4f6;
-    color: #606975;
-  }
+th:first-child, .row-number {
+  width: 60px;
+  text-align: center;
+  background: #f3f4f6;
+  color: #606975;
+}
 
-  .row-number {
-    cursor: grab;
-    user-select: none;
-  }
+.row-number {
+  cursor: grab;
+  user-select: none;
+}
 
-  .row-number:active { cursor: grabbing; }
+.row-number:active { cursor: grabbing; }
 
-  td.data-cell { cursor: text; }
+tr.row-selected > .row-number {
+  background: #b9d6ff;
+  color: #173f79;
+  font-weight: bold;
+  box-shadow: inset 0 0 0 2px #477fcb;
+}
 
-  td.data-cell .cell-text {
-    display: block;
-    overflow: hidden;
-    padding: 8px;
-    text-overflow: ellipsis;
-  }
+tr.row-selected > td.data-cell {
+  background-color: #edf5ff;
+}
 
-  td.data-cell:hover { background: #f3f7fc; }
+td.data-cell { cursor: text; }
 
-  td.data-cell.selected {
-    outline: 2px solid #477fcb;
-    outline-offset: -2px;
-  }
+td.data-cell .cell-text {
+  display: block;
+  overflow: hidden;
+  padding: 8px;
+  text-overflow: ellipsis;
+}
 
-  td.data-cell.match {
-    background: #fff0a8;
-  }
+td.data-cell:hover { background: #f3f7fc; }
 
-  td.data-cell.current-match {
-    background: #ffbd57;
-    outline: 3px solid #df8613;
-    outline-offset: -3px;
-  }
+td.data-cell.selected {
+  outline: 2px solid #477fcb;
+  outline-offset: -2px;
+}
 
-  .cell-editor {
-    display: block;
-    width: 100%;
-    min-width: 0;
-    max-width: 100%;
-    height: 36px;
-    padding: 6px 8px;
-    border: 2px solid #477fcb;
-    border-radius: 0;
-    outline: none;
-    background: #fff;
-  }
+td.data-cell.match { background: #fff0a8; }
 
-  tr.dragging { opacity: .4; }
-  tr.drop-target { outline: 2px dashed #477fcb; }
+td.data-cell.current-match {
+  background: #ffbd57 !important;
+  outline: 3px solid #df8613;
+  outline-offset: -3px;
+}
 
-  .bottom-controls {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin: 12px 0;
-  }
+.cell-editor {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  height: 36px;
+  padding: 6px 8px;
+  border: 2px solid #477fcb;
+  border-radius: 0;
+  outline: none;
+  background: white;
+}
 
-  .hint {
-    font-size: 13px;
-    color: #656d78;
-    line-height: 1.6;
-  }
+tr.dragging { opacity: .4; }
+tr.drop-target { outline: 2px dashed #477fcb; }
 
-  @media (max-width: 600px) {
-    body { margin: 8px; }
-    .searchbar { gap: 6px; }
-    #searchInput { flex-basis: 100%; }
-  }
+.hint {
+  font-size: 13px;
+  color: #656d78;
+  line-height: 1.6;
+}
+
+@media (max-width: 600px) {
+  body { margin: 8px; }
+  .searchbar { gap: 6px; }
+  #searchInput { flex-basis: 100%; }
+}
 </style>
 </head>
 <body>
@@ -224,34 +222,28 @@
   <button id="redoBtn" onclick="redo()">↷ やり直す</button>
   <button onclick="copyTable()">表をコピー</button>
   <button onclick="clearTable()">表をクリア</button>
+  <button onclick="insertAfterSelected()">選択行の後ろに挿入</button>
 </div>
 
 <div class="searchbar">
-  <input id="searchInput" type="text"
-         placeholder="検索する文字を入力…" autocomplete="off">
-
+  <input id="searchInput" placeholder="検索する文字を入力…" autocomplete="off">
   <select id="searchColumn" aria-label="検索する列">
     <option value="both">両方</option>
     <option value="x">x列</option>
     <option value="y">y列</option>
   </select>
-
   <button onclick="moveMatch(-1)" title="前の一致箇所">↑</button>
   <button onclick="moveMatch(1)" title="次の一致箇所">↓</button>
-
   <span id="searchCount">0 / 0</span>
+  <button onclick="replaceValues()">値を置換</button>
 </div>
 
 <div id="status">Desmos の表データを読み込んでください。</div>
 
 <details>
   <summary>元データの読み込み</summary>
-  <p class="hint">
-    Desmos の表データを貼り付けて「読み込み」を押してください。
-    x_1 と y_1 の配列を読み込みます。
-  </p>
-  <textarea id="sourceInput"
-    placeholder="Desmos の表データをここに貼り付け"></textarea>
+  <p class="hint">Desmos の表データを貼り付けて「読み込み」を押してください。</p>
+  <textarea id="sourceInput" placeholder="Desmos の表データをここに貼り付け"></textarea>
   <div class="toolbar">
     <button onclick="loadSource()">読み込み</button>
   </div>
@@ -265,11 +257,7 @@
       <col class="data-col">
     </colgroup>
     <thead>
-      <tr>
-        <th>行</th>
-        <th>x₁</th>
-        <th>y₁</th>
-      </tr>
+      <tr><th>行</th><th>x₁</th><th>y₁</th></tr>
     </thead>
     <tbody id="tableBody"></tbody>
   </table>
@@ -277,23 +265,29 @@
 
 <div class="bottom-controls">
   <button onclick="appendRow()">＋ 最後に行を追加</button>
+  <button onclick="deleteSelectedRow()">選択行を削除</button>
   <button onclick="copyTable()">表をコピー</button>
 </div>
 
 <p class="hint">
-  セルをクリックすると直接編集できます。行番号を右クリックすると、
-  行の挿入・削除・入れ替えができます。行番号をドラッグしても並べ替えられます。
-  検索は部分一致です。
+  行番号をクリックすると行を選択できます。選択した行は青く表示されます。<br>
+  選択中に Enter キーを押すと、その行の後ろに新しい行を挿入できます。<br>
+  挿入時は x列とy列の値をタブ区切り、またはカンマ区切りで入力してください。<br>
+  セルをクリックして直接編集できます。矢印キーでセルを移動できます。<br>
+  行を選択した状態で Delete / Backspace を押すと削除できます。確認画面が表示されます。<br>
+  行番号をドラッグすると行を並べ替えられます。右クリックで行の操作メニューを開けます。
 </p>
 
 <script>
 let rows = [];
 let selectedCell = null;
+let selectedRow = null;
 let matches = [];
 let matchIndex = -1;
 let history = [];
 let future = [];
 let dragIndex = null;
+let editing = false;
 
 const $ = id => document.getElementById(id);
 
@@ -318,8 +312,8 @@ function undo() {
   future.push(JSON.stringify(rows));
   rows = JSON.parse(history.pop());
   selectedCell = null;
+  selectedRow = null;
   render();
-  updateHistoryButtons();
   setStatus("操作を元に戻しました。");
 }
 
@@ -328,23 +322,19 @@ function redo() {
   history.push(JSON.stringify(rows));
   rows = JSON.parse(future.pop());
   selectedCell = null;
+  selectedRow = null;
   render();
-  updateHistoryButtons();
   setStatus("操作をやり直しました。");
 }
 
 function parseArray(source, name) {
   const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const regex = new RegExp(
-    escaped + "\\s*=\\s*\\[([\\s\\S]*?)\\]",
-    "m"
+    escaped + "\\s*=\\s*\\[([\\s\\S]*?)\\]", "m"
   );
   const found = source.match(regex);
   if (!found) return null;
-
-  return found[1].split(",")
-    .map(v => v.trim())
-    .filter(v => v !== "");
+  return found[1].split(",").map(v => v.trim()).filter(v => v !== "");
 }
 
 function loadSource() {
@@ -359,12 +349,13 @@ function loadSource() {
 
   snapshot();
   const length = Math.max(xs.length, ys.length);
-  rows = Array.from({ length }, (_, i) => ({
+  rows = Array.from({length}, (_, i) => ({
     x: xs[i] ?? "",
     y: ys[i] ?? ""
   }));
 
   selectedCell = null;
+  selectedRow = null;
   render();
   setStatus(`${rows.length} 行を読み込みました。`);
 }
@@ -377,43 +368,64 @@ function render() {
     const tr = document.createElement("tr");
     tr.dataset.index = index;
 
+    if (selectedRow === index) tr.classList.add("row-selected");
+
     const numberCell = document.createElement("td");
     numberCell.className = "row-number";
     numberCell.textContent = index + 1;
-    numberCell.title = "右クリックで行の操作／ドラッグで並べ替え";
+    numberCell.title = "クリックで選択、右クリックで操作、ドラッグで移動";
+
+    numberCell.addEventListener("click", () => {
+      selectedRow = index;
+      selectedCell = null;
+      render();
+      setStatus(`${index + 1} 行目を選択しました。`);
+    });
+
     numberCell.addEventListener("contextmenu", event => {
       event.preventDefault();
+      selectedRow = index;
+      selectedCell = null;
+      render();
       rowMenu(index);
     });
+
     numberCell.draggable = true;
     numberCell.addEventListener("dragstart", event => {
       dragIndex = index;
+      selectedRow = index;
       tr.classList.add("dragging");
       event.dataTransfer.effectAllowed = "move";
     });
+
     numberCell.addEventListener("dragend", () => {
       dragIndex = null;
       document.querySelectorAll("tr").forEach(r =>
         r.classList.remove("dragging", "drop-target")
       );
+      render();
     });
+
     tr.addEventListener("dragover", event => {
       if (dragIndex === null || dragIndex === index) return;
       event.preventDefault();
       tr.classList.add("drop-target");
     });
-    tr.addEventListener("dragleave", () => {
-      tr.classList.remove("drop-target");
-    });
+
+    tr.addEventListener("dragleave", () =>
+      tr.classList.remove("drop-target")
+    );
+
     tr.addEventListener("drop", event => {
       event.preventDefault();
       if (dragIndex === null || dragIndex === index) return;
+
       snapshot();
       const moved = rows.splice(dragIndex, 1)[0];
       rows.splice(index, 0, moved);
+      selectedRow = index;
       selectedCell = null;
       render();
-      updateSearch(false);
       setStatus("行を並べ替えました。");
     });
 
@@ -425,15 +437,25 @@ function render() {
       td.dataset.row = index;
       td.dataset.col = key;
 
-      const isSelected = selectedCell &&
-        selectedCell.row === index && selectedCell.col === key;
-      if (isSelected) td.classList.add("selected");
+      if (selectedCell?.row === index && selectedCell?.col === key) {
+        td.classList.add("selected");
+      }
 
       const span = document.createElement("span");
       span.className = "cell-text";
       span.textContent = row[key];
       td.appendChild(span);
-      td.addEventListener("click", () => editCell(td, index, key));
+
+      td.addEventListener("click", () => {
+        selectedRow = index;
+        selectedCell = {row: index, col: key};
+        render();
+
+        const target = document.querySelector(
+          `td[data-row="${index}"][data-col="${key}"]`
+        );
+        if (target) editCell(target, index, key);
+      });
 
       tr.appendChild(td);
     });
@@ -448,7 +470,10 @@ function render() {
 function editCell(td, rowIndex, key) {
   if (td.querySelector("input")) return;
 
-  selectedCell = { row: rowIndex, col: key };
+  editing = true;
+  selectedRow = rowIndex;
+  selectedCell = {row: rowIndex, col: key};
+
   const oldValue = rows[rowIndex][key];
   td.classList.add("selected");
   td.replaceChildren();
@@ -457,101 +482,213 @@ function editCell(td, rowIndex, key) {
   input.type = "text";
   input.className = "cell-editor";
   input.value = oldValue;
-  input.setAttribute("aria-label", `${rowIndex + 1}行目 ${key}列`);
   td.appendChild(input);
   input.focus();
   input.select();
 
   let finished = false;
 
-  function finish(save) {
+  function finish(save, move = null) {
     if (finished) return;
     finished = true;
+    editing = false;
 
     const newValue = input.value;
+
     if (save && newValue !== oldValue) {
       snapshot();
       rows[rowIndex][key] = newValue;
     }
 
-    selectedCell = { row: rowIndex, col: key };
+    selectedRow = rowIndex;
+    selectedCell = {row: rowIndex, col: key};
     render();
+
     if (save && newValue !== oldValue) {
-      setStatus(`${rowIndex + 1}行目の${key}列を編集しました。`);
+      setStatus("セルを編集しました。");
+    }
+
+    if (move) {
+      let nextRow = rowIndex;
+      let nextCol = key;
+
+      if (move === "left") nextCol = "x";
+      if (move === "right") nextCol = "y";
+      if (move === "up") nextRow--;
+      if (move === "down") nextRow++;
+
+      if (nextRow >= 0 && nextRow < rows.length) {
+        const target = document.querySelector(
+          `td[data-row="${nextRow}"][data-col="${nextCol}"]`
+        );
+
+        if (target) {
+          selectedRow = nextRow;
+          selectedCell = {row: nextRow, col: nextCol};
+          render();
+
+          const newCell = document.querySelector(
+            `td[data-row="${nextRow}"][data-col="${nextCol}"]`
+          );
+
+          if (newCell) editCell(newCell, nextRow, nextCol);
+        }
+      }
     }
   }
 
   input.addEventListener("keydown", event => {
     if (event.key === "Enter") {
       event.preventDefault();
-      finish(true);
-    }
-    if (event.key === "Escape") {
+      finish(true, key === "x" ? "right" : "down");
+    } else if (event.key === "Escape") {
       event.preventDefault();
       finish(false);
-    }
-    if (event.key === "Tab") {
+    } else if (event.key === "Tab") {
       event.preventDefault();
-      finish(true);
-      const nextKey = key === "x" ? "y" : "x";
-      const nextRow = key === "x" ? rowIndex : rowIndex + 1;
-      if (rows[nextRow]) {
-        const nextCell = document.querySelector(
-          `td[data-row="${nextRow}"][data-col="${nextKey}"]`
-        );
-        if (nextCell) editCell(nextCell, nextRow, nextKey);
-      }
+      finish(true, key === "x" ? "right" : "down");
+    } else if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+      event.preventDefault();
+      finish(true, event.key === "ArrowUp" ? "up" : "down");
+    } else if (
+      event.key === "ArrowLeft" &&
+      input.selectionStart === 0 &&
+      input.selectionEnd === 0
+    ) {
+      event.preventDefault();
+      finish(true, "left");
+    } else if (
+      event.key === "ArrowRight" &&
+      input.selectionStart === input.value.length &&
+      input.selectionEnd === input.value.length
+    ) {
+      event.preventDefault();
+      finish(true, "right");
     }
   });
 
   input.addEventListener("blur", () => finish(true));
 }
 
+/* 選択行の後ろに挿入 */
+function insertAfterSelected() {
+  if (selectedRow === null) {
+    setStatus("先に行番号をクリックして、行を選択してください。");
+    return;
+  }
+
+  const value = prompt(
+    "挿入する値を入力してください。\n" +
+    "x列とy列はタブ、またはカンマで区切ります。\n" +
+    "例：12.3,45.6\n" +
+    "空欄なら x列・y列とも空の行を挿入します。"
+  );
+
+  if (value === null) return;
+
+  let x = "", y = "";
+
+  if (value.trim() !== "") {
+    const parts = value.includes("\t")
+      ? value.split("\t")
+      : value.split(",");
+    x = (parts[0] ?? "").trim();
+    y = (parts[1] ?? "").trim();
+  }
+
+  snapshot();
+  const insertAt = selectedRow + 1;
+  rows.splice(insertAt, 0, {x, y});
+  selectedRow = insertAt;
+  selectedCell = {row: insertAt, col: "x"};
+  render();
+  setStatus(`${insertAt + 1} 行目に挿入しました。`);
+}
+
+function appendRow() {
+  snapshot();
+  rows.push({x: "", y: ""});
+  selectedRow = rows.length - 1;
+  selectedCell = {row: selectedRow, col: "x"};
+  render();
+  setStatus("最後に行を追加しました。");
+}
+
+function deleteSelectedRow() {
+  if (selectedRow === null || !rows[selectedRow]) {
+    setStatus("先に行番号をクリックして、行を選択してください。");
+    return;
+  }
+
+  const index = selectedRow;
+  if (!confirm(`${index + 1} 行目を削除しますか？`)) return;
+
+  snapshot();
+  rows.splice(index, 1);
+  selectedRow = rows.length
+    ? Math.min(index, rows.length - 1)
+    : null;
+  selectedCell = null;
+  render();
+  setStatus(`${index + 1} 行目を削除しました。`);
+}
+
 function rowMenu(index) {
   const action = prompt(
-    `${index + 1}行目の操作\n` +
+    `${index + 1} 行目の操作\n` +
     "1：この行の前に挿入\n" +
-    "2：この行を削除\n" +
-    "3：別の行と入れ替え\n" +
+    "2：この行の後ろに挿入\n" +
+    "3：この行を削除\n" +
+    "4：別の行と入れ替え\n" +
     "番号を入力してください"
   );
 
-  if (action === "1") {
-    snapshot();
-    rows.splice(index, 0, { x: "", y: "" });
-    render();
-    setStatus(`${index + 1}行目の前に行を挿入しました。`);
-  } else if (action === "2") {
-    if (!confirm(`${index + 1}行目を削除しますか？`)) return;
-    snapshot();
-    rows.splice(index, 1);
-    selectedCell = null;
-    render();
-    setStatus(`${index + 1}行目を削除しました。`);
-  } else if (action === "3") {
-    const input = prompt(
-      `入れ替え先の行番号を入力してください（1〜${rows.length}）`
+  if (action === "1" || action === "2") {
+    const value = prompt(
+      "x列とy列の値をタブまたはカンマで区切って入力してください。"
     );
+    if (value === null) return;
+
+    const parts = value.trim() === ""
+      ? ["", ""]
+      : (value.includes("\t") ? value.split("\t") : value.split(","));
+
+    const newRow = {
+      x: (parts[0] ?? "").trim(),
+      y: (parts[1] ?? "").trim()
+    };
+
+    snapshot();
+    const at = index + (action === "2" ? 1 : 0);
+    rows.splice(at, 0, newRow);
+    selectedRow = at;
+    selectedCell = {row: at, col: "x"};
+    render();
+    setStatus(`${at + 1} 行目に挿入しました。`);
+
+  } else if (action === "3") {
+    selectedRow = index;
+    deleteSelectedRow();
+
+  } else if (action === "4") {
+    const input = prompt(`入れ替え先の行番号（1〜${rows.length}）`);
     if (input === null || input.trim() === "") return;
+
     const target = Number(input) - 1;
     if (!Number.isInteger(target) || target < 0 || target >= rows.length) {
       setStatus("有効な行番号を入力してください。");
       return;
     }
+
     if (target === index) return;
 
     snapshot();
     [rows[index], rows[target]] = [rows[target], rows[index]];
+    selectedRow = target;
+    selectedCell = null;
     render();
-    setStatus(`${index + 1}行目と${target + 1}行目を入れ替えました。`);
+    setStatus("行を入れ替えました。");
   }
-}
-
-function appendRow() {
-  snapshot();
-  rows.push({ x: "", y: "" });
-  render();
-  setStatus("最後に行を追加しました。");
 }
 
 function clearTable() {
@@ -559,12 +696,14 @@ function clearTable() {
   snapshot();
   rows = [];
   selectedCell = null;
+  selectedRow = null;
   render();
   setStatus("表をクリアしました。");
 }
 
 function copyTable() {
   const text = rows.map(row => `${row.x}\t${row.y}`).join("\n");
+
   if (navigator.clipboard && window.isSecureContext) {
     navigator.clipboard.writeText(text)
       .then(() => setStatus("表をコピーしました。"))
@@ -579,123 +718,42 @@ function copyFallback(text) {
   area.value = text;
   document.body.appendChild(area);
   area.select();
+
   try {
     document.execCommand("copy");
     setStatus("表をコピーしました。");
   } catch {
-    setStatus("コピーできませんでした。ブラウザの権限を確認してください。");
+    setStatus("コピーできませんでした。");
   }
+
   area.remove();
 }
 
-/* 検索 */
-
-$("searchInput").addEventListener("input", () => updateSearch(true));
-$("searchColumn").addEventListener("change", () => updateSearch(true));
-
-function updateSearch(jumpToFirst = true) {
-  const query = $("searchInput").value;
-  const column = $("searchColumn").value;
-  matches = [];
-  matchIndex = -1;
-
-  if (query !== "") {
-    rows.forEach((row, rowIndex) => {
-      const keys = column === "both" ? ["x", "y"] : [column];
-      keys.forEach(key => {
-        if (String(row[key]).includes(query)) {
-          matches.push({ row: rowIndex, col: key });
-        }
-      });
-    });
-  }
-
-  if (matches.length) {
-    matchIndex = 0;
-    if (jumpToFirst) scrollToMatch();
-  }
-
-  $("searchCount").textContent = matches.length
-    ? `${matchIndex + 1} / ${matches.length}`
-    : "0 / 0";
-
-  highlightMatches();
-}
-
-function highlightMatches() {
-  document.querySelectorAll("td.data-cell").forEach(td => {
-    td.classList.remove("match", "current-match");
-  });
-
-  matches.forEach((match, index) => {
-    const td = document.querySelector(
-      `td[data-row="${match.row}"][data-col="${match.col}"]`
-    );
-    if (!td) return;
-    td.classList.add("match");
-    if (index === matchIndex) td.classList.add("current-match");
-  });
-
-  $("searchCount").textContent = matches.length
-    ? `${matchIndex + 1} / ${matches.length}`
-    : "0 / 0";
-}
-
-function scrollToMatch() {
-  if (matchIndex < 0 || !matches[matchIndex]) return;
-  const match = matches[matchIndex];
-  const td = document.querySelector(
-    `td[data-row="${match.row}"][data-col="${match.col}"]`
-  );
-  if (!td) return;
-
-  td.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
-  highlightMatches();
-}
-
-function moveMatch(direction) {
-  if (!matches.length) {
-    setStatus("一致する箇所がありません。");
-    return;
-  }
-  matchIndex = (matchIndex + direction + matches.length) % matches.length;
-  scrollToMatch();
-}
-
-/* Enter / Shift+Enter でも検索結果を移動 */
-$("searchInput").addEventListener("keydown", event => {
-  if (event.key === "Enter") {
-    event.preventDefault();
-    moveMatch(event.shiftKey ? -1 : 1);
-  }
-});
-
-/* ① 値の置換：検索語を対象に、選択した列の部分文字列を置き換える */
 function replaceValues() {
   const query = $("searchInput").value;
+
   if (!query) {
-    setStatus("先に検索欄に置換対象の文字を入力してください。");
+    setStatus("検索欄に置換対象の文字を入力してください。");
     return;
   }
 
-  const replacement = prompt(
-    `「${query}」を何に置き換えますか？`,
-    ""
-  );
+  const replacement = prompt(`「${query}」を何に置き換えますか？`, "");
   if (replacement === null) return;
 
   const column = $("searchColumn").value;
   const keys = column === "both" ? ["x", "y"] : [column];
-
   let count = 0;
+
   const changed = rows.map(row => {
-    const copy = { ...row };
+    const copy = {...row};
+
     keys.forEach(key => {
       if (String(copy[key]).includes(query)) {
         copy[key] = String(copy[key]).split(query).join(replacement);
         count++;
       }
     });
+
     return copy;
   });
 
@@ -710,11 +768,133 @@ function replaceValues() {
   setStatus(`${count} 個のセルを置換しました。`);
 }
 
-/* Ctrl+H で置換 */
+/* 検索 */
+$("searchInput").addEventListener("input", () => updateSearch(true));
+$("searchColumn").addEventListener("change", () => updateSearch(true));
+
+function updateSearch(jumpToFirst = true) {
+  const query = $("searchInput").value;
+  const column = $("searchColumn").value;
+  matches = [];
+  matchIndex = -1;
+
+  if (query !== "") {
+    rows.forEach((row, rowIndex) => {
+      const keys = column === "both" ? ["x", "y"] : [column];
+
+      keys.forEach(key => {
+        if (String(row[key]).includes(query)) {
+          matches.push({row: rowIndex, col: key});
+        }
+      });
+    });
+  }
+
+  if (matches.length) {
+    matchIndex = 0;
+    if (jumpToFirst) scrollToMatch();
+  }
+
+  highlightMatches();
+}
+
+function highlightMatches() {
+  document.querySelectorAll("td.data-cell").forEach(td => {
+    td.classList.remove("match", "current-match");
+  });
+
+  matches.forEach((match, index) => {
+    const td = document.querySelector(
+      `td[data-row="${match.row}"][data-col="${match.col}"]`
+    );
+
+    if (!td) return;
+    td.classList.add("match");
+    if (index === matchIndex) td.classList.add("current-match");
+  });
+
+  $("searchCount").textContent = matches.length
+    ? `${matchIndex + 1} / ${matches.length}`
+    : "0 / 0";
+}
+
+function scrollToMatch() {
+  if (matchIndex < 0 || !matches[matchIndex]) return;
+
+  const match = matches[matchIndex];
+  const td = document.querySelector(
+    `td[data-row="${match.row}"][data-col="${match.col}"]`
+  );
+
+  if (td) {
+    td.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+      inline: "nearest"
+    });
+    highlightMatches();
+  }
+}
+
+function moveMatch(direction) {
+  if (!matches.length) {
+    setStatus("一致する箇所がありません。");
+    return;
+  }
+
+  matchIndex = (matchIndex + direction + matches.length) % matches.length;
+  scrollToMatch();
+}
+
+/* キーボード操作 */
 document.addEventListener("keydown", event => {
-  if (event.ctrlKey && event.key.toLowerCase() === "h") {
-    event.preventDefault();
-    replaceValues();
+  if (editing) return;
+
+  const tag = document.activeElement?.tagName;
+  if (["INPUT", "TEXTAREA", "SELECT"].includes(tag)) return;
+
+  /* Enter で選択行の後ろに挿入 */
+  if (event.key === "Enter") {
+    if (selectedRow !== null) {
+      event.preventDefault();
+      insertAfterSelected();
+    }
+    return;
+  }
+
+  /* 選択行の削除 */
+  if (event.key === "Delete" || event.key === "Backspace") {
+    if (selectedRow !== null) {
+      event.preventDefault();
+      deleteSelectedRow();
+    }
+    return;
+  }
+
+  if (!selectedCell || !rows.length) return;
+
+  let r = selectedCell.row;
+  let c = selectedCell.col;
+
+  if (event.key === "ArrowUp") r--;
+  else if (event.key === "ArrowDown") r++;
+  else if (event.key === "ArrowLeft") c = "x";
+  else if (event.key === "ArrowRight") c = "y";
+  else return;
+
+  event.preventDefault();
+  r = Math.max(0, Math.min(rows.length - 1, r));
+
+  selectedRow = r;
+  selectedCell = {row: r, col: c};
+  render();
+
+  const target = document.querySelector(
+    `td[data-row="${r}"][data-col="${c}"]`
+  );
+
+  if (target) {
+    target.scrollIntoView({block: "nearest", inline: "nearest"});
   }
 });
 
