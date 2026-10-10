@@ -267,12 +267,12 @@ tr.drop-target { outline: 2px dashed #477fcb; }
 </div>
 
 <p class="hint">
-  行番号をクリックすると行を選択できます。選択した行は青く表示されます。<br>
-  選択中に Enter キーを押すと、その行の後ろに新しい行を挿入できます。<br>
-  セルの編集中に Enter を押した場合も、編集内容を保存して後ろに行を挿入します。<br>
-  挿入後は新しい行の x 列がすぐに入力モードになります。<br>
-  Delete / Backspace で選択行を削除できます。確認画面が表示されます。<br>
-  行番号をドラッグすると行を並べ替えられます。右クリックで行の操作メニューを開けます。
+  行番号をクリックすると行を選択できます。<br>
+  セルをクリックすると編集できます。編集欄で Enter を押すと、内容を保存して後ろに新しい行を挿入します。<br>
+  挿入した行は、すぐに x 列が入力モードになります。<br>
+  空白のセルをクリックして選択し、編集欄を開いていない状態で Backspace を押すと、その行を削除できます。<br>
+  Delete は選択行を削除します。どちらも確認画面が表示されます。<br>
+  行番号をドラッグすると行を並べ替えられます。右クリックでも行を操作できます。
 </p>
 
 <script>
@@ -539,7 +539,6 @@ function editCell(td, rowIndex, key) {
     if (event.key === "Enter") {
       event.preventDefault();
 
-      // 編集内容を保存してから後ろに新しい行を挿入
       const newValue = input.value;
 
       if (newValue !== oldValue) {
@@ -587,7 +586,6 @@ function editCell(td, rowIndex, key) {
   input.addEventListener("blur", () => finish(true));
 }
 
-/* 選択行の後ろに挿入し、挿入行のx列を編集状態にする */
 function insertAfterSelected(initialValues = null) {
   if (selectedRow === null) {
     setStatus("先に行番号をクリックして、行を選択してください。");
@@ -663,9 +661,11 @@ function deleteSelectedRow() {
 
   snapshot();
   rows.splice(index, 1);
+
   selectedRow = rows.length
     ? Math.min(index, rows.length - 1)
     : null;
+
   selectedCell = null;
   render();
   setStatus(`${index + 1} 行目を削除しました。`);
@@ -898,6 +898,44 @@ document.addEventListener("keydown", event => {
   const tag = document.activeElement?.tagName;
   if (["INPUT", "TEXTAREA", "SELECT"].includes(tag)) return;
 
+  // Backspace：空白のセルを選択中なら、その行を削除
+  if (event.key === "Backspace") {
+    if (selectedCell === null || selectedRow === null) return;
+
+    const row = rows[selectedCell.row];
+    if (!row) return;
+
+    if (String(row[selectedCell.col] ?? "").trim() === "") {
+      event.preventDefault();
+
+      const index = selectedCell.row;
+
+      if (confirm(`${index + 1} 行目を削除しますか？`)) {
+        snapshot();
+        rows.splice(index, 1);
+
+        selectedRow = rows.length
+          ? Math.min(index, rows.length - 1)
+          : null;
+
+        selectedCell = null;
+        render();
+        setStatus(`${index + 1} 行目を削除しました。`);
+      }
+    }
+    return;
+  }
+
+  // Delete：選択行を削除
+  if (event.key === "Delete") {
+    if (selectedRow !== null) {
+      event.preventDefault();
+      deleteSelectedRow();
+    }
+    return;
+  }
+
+  // Enter：選択行の後ろに挿入
   if (event.key === "Enter") {
     if (selectedRow !== null) {
       event.preventDefault();
@@ -906,14 +944,7 @@ document.addEventListener("keydown", event => {
     return;
   }
 
-  if (event.key === "Delete" || event.key === "Backspace") {
-    if (selectedRow !== null) {
-      event.preventDefault();
-      deleteSelectedRow();
-    }
-    return;
-  }
-
+  // 矢印キー：選択セルを移動
   if (!selectedCell || !rows.length) return;
 
   let r = selectedCell.row;
@@ -926,6 +957,7 @@ document.addEventListener("keydown", event => {
   else return;
 
   event.preventDefault();
+
   r = Math.max(0, Math.min(rows.length - 1, r));
 
   selectedRow = r;
@@ -937,7 +969,10 @@ document.addEventListener("keydown", event => {
   );
 
   if (target) {
-    target.scrollIntoView({block: "nearest", inline: "nearest"});
+    target.scrollIntoView({
+      block: "nearest",
+      inline: "nearest"
+    });
   }
 });
 
