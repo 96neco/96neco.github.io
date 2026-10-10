@@ -751,15 +751,20 @@ function clearTable() {
 
 function copyTable() {
   const text = rows.map(row => `${row.x}\t${row.y}`).join("\n");
-  const successMessage = "コピーしました。Desmosの式入力欄に貼り付けてください";
 
   if (navigator.clipboard && window.isSecureContext) {
     navigator.clipboard.writeText(text)
-      .then(() => setStatus(successMessage))
+      .then(() => copySucceeded())
       .catch(() => copyFallback(text));
   } else {
     copyFallback(text);
   }
+}
+
+function copySucceeded() {
+  const message = "コピーしました。Desmosの式入力欄に貼り付けてください";
+  setStatus(message);
+  alert(message);
 }
 
 function copyFallback(text) {
@@ -772,12 +777,14 @@ function copyFallback(text) {
     const successful = document.execCommand("copy");
 
     if (successful) {
-      setStatus("コピーしました。Desmosの式入力欄に貼り付けてください");
+      copySucceeded();
     } else {
       setStatus("コピーできませんでした。");
+      alert("コピーできませんでした。");
     }
   } catch {
     setStatus("コピーできませんでした。");
+    alert("コピーできませんでした。");
   }
 
   area.remove();
@@ -907,11 +914,6 @@ function moveMatch(direction) {
 }
 
 /* キーボード操作 */
-
-/*
- * キャプチャ段階で処理することで、入力欄・セル編集中でも
- * Ctrl+Z / Ctrl+Y を表の履歴操作として優先する。
- */
 document.addEventListener("keydown", event => {
   if (!event.ctrlKey || event.altKey || event.metaKey) return;
 
@@ -933,7 +935,6 @@ document.addEventListener("keydown", event => {
 
 /* その他のキーボード操作 */
 document.addEventListener("keydown", event => {
-  // Ctrl+Z / Ctrl+Y は上のキャプチャ処理で処理済み
   if (event.ctrlKey && ["z", "y"].includes(event.key.toLowerCase())) {
     return;
   }
@@ -943,7 +944,6 @@ document.addEventListener("keydown", event => {
   const tag = document.activeElement?.tagName;
   if (["INPUT", "TEXTAREA", "SELECT"].includes(tag)) return;
 
-  // Backspace：空白セルを選択中なら、その行を削除して前の行を編集
   if (event.key === "Backspace") {
     if (selectedCell === null || selectedRow === null) return;
 
@@ -986,7 +986,6 @@ document.addEventListener("keydown", event => {
     return;
   }
 
-  // Delete：選択行を確認画面なしで削除
   if (event.key === "Delete") {
     if (selectedRow !== null) {
       event.preventDefault();
@@ -995,7 +994,6 @@ document.addEventListener("keydown", event => {
     return;
   }
 
-  // Enter：選択行の直後に空白行を挿入
   if (event.key === "Enter") {
     if (selectedRow !== null) {
       event.preventDefault();
@@ -1004,7 +1002,6 @@ document.addEventListener("keydown", event => {
     return;
   }
 
-  // 矢印キー：選択セルを移動
   if (!selectedCell || !rows.length) return;
 
   let r = selectedCell.row;
