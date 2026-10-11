@@ -233,6 +233,7 @@ tr.drop-target { outline: 2px dashed #477fcb; }
   <textarea id="sourceInput" placeholder="Desmos の表データをここに貼り付け（table {...}の形式）"></textarea>
   <div class="toolbar">
     <button onclick="loadSource()">読み込み</button>
+    <button onclick="clearSource()">入力欄をクリア</button>
   </div>
 </details>
 
@@ -371,6 +372,12 @@ function loadSource() {
   selectedRow = null;
   render();
   setStatus(`${rows.length} 行を読み込みました。`);
+}
+
+function clearSource() {
+  $("sourceInput").value = "";
+  setStatus("元データの入力欄をクリアしました。");
+  $("sourceInput").focus();
 }
 
 function render() {
@@ -555,8 +562,6 @@ function editCell(td, rowIndex, key) {
   }
 
   input.addEventListener("keydown", event => {
-    // Ctrl+Z / Ctrl+Y は document のキャプチャ段階で処理する
-
     if (
       event.key === "Backspace" &&
       input.value === "" &&
