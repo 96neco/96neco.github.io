@@ -291,6 +291,9 @@ let future = [];
 let dragIndex = null;
 let editing = false;
 
+// 読み込んだDesmosの元データを保持する
+let originalSource = null;
+
 const $ = id => document.getElementById(id);
 
 function setStatus(message) {
@@ -361,6 +364,9 @@ function loadSource() {
 
   snapshot();
 
+  // コピー時に元の設定を維持できるよう保存
+  originalSource = source;
+
   const length = Math.max(xs.length, ys.length);
   rows = Array.from({length}, (_, i) => ({
     x: xs[i] ?? "",
@@ -371,6 +377,55 @@ function loadSource() {
   selectedRow = null;
   render();
   setStatus(`${rows.length} 行を読み込みました。`);
+}
+
+// 数値・文字列の配列をDesmosのリスト形式に変換する
+function formatArray(values) {
+  return "[" + values.join(",") + "]";
+}
+
+// 元データ内の指定した配列だけを置き換える
+function replaceArrayInSource(source, name, values) {
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+  // 配列本体の [...] だけを置換する。
+  // 後続の @{ ... } 設定は変更しない。
+  const regex = new RegExp(
+    "(" + escaped + "\\s*=\\s*)\\[[\\s\\S]*?\\]",
+    "m"
+  );
+
+  if (!regex.test(source)) {
+    throw new Error(name + " の配列が見つかりません。");
+  }
+
+  return source.replace(regex, (_, prefix) => {
+    return prefix + formatArray(values);
+  });
+}
+
+// 編集後の表を、元のDesmos形式で生成する
+function buildDesmosSource() {
+  if (originalSource === null) {
+    // 元データが読み込まれていない場合の従来形式
+    return rows.map(row => `${row.x}\t${row.y}`).join("\n");
+  }
+
+  let output = originalSource;
+
+  output = replaceArrayInSource(
+    output,
+    "x_1",
+    rows.map(row => row.x)
+  );
+
+  output = replaceArrayInSource(
+    output,
+    "y_1",
+    rows.map(row => row.y)
+  );
+
+  return output;
 }
 
 function render() {
@@ -555,8 +610,6 @@ function editCell(td, rowIndex, key) {
   }
 
   input.addEventListener("keydown", event => {
-    // Ctrl+Z / Ctrl+Y は document のキャプチャ段階で処理する
-
     if (
       event.key === "Backspace" &&
       input.value === "" &&
@@ -750,7 +803,15 @@ function clearTable() {
 }
 
 function copyTable() {
-  const text = rows.map(row => `${row.x}\t${row.y}`).join("\n");
+  let text;
+
+  try {
+    text = buildDesmosSource();
+  } catch (error) {
+    setStatus("コピー用データの生成に失敗しました。");
+    alert("コピー用データの生成に失敗しました。\n" + error.message);
+    return;
+  }
 
   if (navigator.clipboard && window.isSecureContext) {
     navigator.clipboard.writeText(text)
@@ -762,7 +823,8 @@ function copyTable() {
 }
 
 function copySucceeded() {
-  const message = "コピーしました。Desmosの式入力欄に貼り付けてください";
+  const message =
+    "コピーしました。Desmosのテーブルデータを置き換えてください";
   setStatus(message);
   alert(message);
 }
